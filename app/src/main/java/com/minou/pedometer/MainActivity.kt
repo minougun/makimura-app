@@ -44,6 +44,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -141,6 +142,7 @@ private fun PedometerScreen() {
     val recommendation = remember(uiState.metrics, uiState.weatherContext) {
         RamenRecommendationEngine.recommend(uiState.metrics, uiState.weatherContext)
     }
+    var autoWeatherRefreshRunning by remember { mutableStateOf(false) }
 
     val permissions = remember { requiredPermissions() }
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.HOME) }
@@ -157,6 +159,28 @@ private fun PedometerScreen() {
         if (allGranted) {
             TrackingService.start(context)
         }
+    }
+
+    LaunchedEffect(uiState.weatherCity, uiState.weatherUpdatedAtEpochMs) {
+        val city = uiState.weatherCity.trim()
+        if (city.isBlank()) return@LaunchedEffect
+        if (autoWeatherRefreshRunning) return@LaunchedEffect
+        if (!WeatherRefreshPolicy.shouldAutoRefresh(uiState.weatherUpdatedAtEpochMs)) return@LaunchedEffect
+
+        autoWeatherRefreshRunning = true
+        val result = withContext(Dispatchers.IO) {
+            WeatherAutoFetch.fetchByCity(city)
+        }
+        result.onSuccess { fetched ->
+            MetricsRepository.updateWeatherCity(fetched.cityLabel)
+            MetricsRepository.updateWeatherContext(
+                weatherContext = fetched.weatherContext,
+                updatedAtEpochMs = System.currentTimeMillis(),
+            )
+        }.onFailure { error ->
+            Log.w(WEATHER_INPUT_TAG, "Auto weather refresh failed", error)
+        }
+        autoWeatherRefreshRunning = false
     }
 
     Box(
