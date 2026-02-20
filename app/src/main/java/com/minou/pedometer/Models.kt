@@ -92,7 +92,7 @@ data class TrackingUiState(
     val history: List<DailyHistory> = emptyList(),
     val userProfile: UserProfile = UserProfile(),
     val weatherContext: WeatherContext = WeatherContext(),
-    val weatherCity: String = "Tokyo",
+    val weatherCity: String = MakimuraShop.ADDRESS_LABEL,
     val weatherUpdatedAtEpochMs: Long = 0L,
     val isTracking: Boolean = false,
     val sensorSupported: Boolean = true,

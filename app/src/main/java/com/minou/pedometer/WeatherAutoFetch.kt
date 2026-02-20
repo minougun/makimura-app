@@ -33,6 +33,13 @@ object WeatherAutoFetch {
         }
     }
 
+    @WorkerThread
+    fun fetchForMakimuraShop(): Result<WeatherFetchResult> {
+        return fetchByCity(MakimuraShop.WEATHER_QUERY).map { result ->
+            result.copy(cityLabel = MakimuraShop.ADDRESS_LABEL)
+        }
+    }
+
     private fun fetchGeocoding(query: String): GeocodingResult {
         val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.toString())
         val endpoint = "https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=1&language=ja&format=json"

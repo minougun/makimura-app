@@ -236,7 +236,7 @@ object MetricsRepository {
     fun updateWeatherCity(city: String) {
         ensureInitialized()
 
-        val normalized = city.trim().ifBlank { "Tokyo" }.take(80)
+        val normalized = city.trim().ifBlank { MakimuraShop.ADDRESS_LABEL }.take(120)
         prefs.edit()
             .putString(KEY_WEATHER_CITY, normalized)
             .apply()
@@ -374,11 +374,11 @@ object MetricsRepository {
     }
 
     private fun loadWeatherCityFromDisk(): String {
-        return prefs.getString(KEY_WEATHER_CITY, "Tokyo")
+        return prefs.getString(KEY_WEATHER_CITY, MakimuraShop.ADDRESS_LABEL)
             ?.trim()
-            ?.ifBlank { "Tokyo" }
-            ?.take(80)
-            ?: "Tokyo"
+            ?.ifBlank { MakimuraShop.ADDRESS_LABEL }
+            ?.take(120)
+            ?: MakimuraShop.ADDRESS_LABEL
     }
 
     private fun archiveSafelyIfNeeded(metrics: TodayMetrics) {

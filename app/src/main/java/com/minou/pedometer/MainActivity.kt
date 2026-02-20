@@ -70,6 +70,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
@@ -162,25 +164,33 @@ private fun PedometerScreen() {
     }
 
     LaunchedEffect(uiState.weatherCity, uiState.weatherUpdatedAtEpochMs) {
-        val city = uiState.weatherCity.trim()
-        if (city.isBlank()) return@LaunchedEffect
-        if (autoWeatherRefreshRunning) return@LaunchedEffect
-        if (!WeatherRefreshPolicy.shouldAutoRefresh(uiState.weatherUpdatedAtEpochMs)) return@LaunchedEffect
-
-        autoWeatherRefreshRunning = true
-        val result = withContext(Dispatchers.IO) {
-            WeatherAutoFetch.fetchByCity(city)
-        }
-        result.onSuccess { fetched ->
-            MetricsRepository.updateWeatherCity(fetched.cityLabel)
-            MetricsRepository.updateWeatherContext(
-                weatherContext = fetched.weatherContext,
-                updatedAtEpochMs = System.currentTimeMillis(),
+        while (isActive) {
+            val latestState = MetricsRepository.uiState.value
+            val mustSwitchToShopAddress = latestState.weatherCity != MakimuraShop.ADDRESS_LABEL
+            val shouldRefreshNow = mustSwitchToShopAddress || WeatherRefreshPolicy.shouldAutoRefresh(
+                updatedAtEpochMs = latestState.weatherUpdatedAtEpochMs,
+                staleDurationMs = MakimuraShop.WEATHER_REFRESH_INTERVAL_MS,
             )
-        }.onFailure { error ->
-            Log.w(WEATHER_INPUT_TAG, "Auto weather refresh failed", error)
+
+            if (!autoWeatherRefreshRunning && shouldRefreshNow) {
+                autoWeatherRefreshRunning = true
+                val result = withContext(Dispatchers.IO) {
+                    WeatherAutoFetch.fetchForMakimuraShop()
+                }
+                result.onSuccess { fetched ->
+                    MetricsRepository.updateWeatherCity(MakimuraShop.ADDRESS_LABEL)
+                    MetricsRepository.updateWeatherContext(
+                        weatherContext = fetched.weatherContext,
+                        updatedAtEpochMs = System.currentTimeMillis(),
+                    )
+                }.onFailure { error ->
+                    Log.w(WEATHER_INPUT_TAG, "Auto weather refresh failed", error)
+                }
+                autoWeatherRefreshRunning = false
+            }
+
+            delay(60_000L)
         }
-        autoWeatherRefreshRunning = false
     }
 
     Box(
@@ -312,6 +322,8 @@ private fun HomeTabContent(
         RecommendationCard(
             weatherContext = uiState.weatherContext,
             recommendation = recommendation,
+            weatherCity = uiState.weatherCity,
+            weatherUpdatedAtEpochMs = uiState.weatherUpdatedAtEpochMs,
         )
 
         AppCard(modifier = Modifier.fillMaxWidth()) {
@@ -817,7 +829,7 @@ private fun SettingsTab(
     var saveMessage by remember { mutableStateOf<String?>(null) }
     var selectedWeather by remember(weatherContext) { mutableStateOf(weatherContext.condition) }
     var temperatureInput by remember(weatherContext) { mutableStateOf(weatherContext.temperatureC.toString()) }
-    var weatherCityInput by remember(weatherCity) { mutableStateOf(weatherCity) }
+    var weatherCityInput by remember(weatherCity) { mutableStateOf(MakimuraShop.ADDRESS_LABEL) }
     var weatherLoading by remember { mutableStateOf(false) }
     var weatherSaveMessage by remember { mutableStateOf<String?>(null) }
     var weatherMessageIsError by remember { mutableStateOf(false) }
@@ -1026,36 +1038,20 @@ private fun SettingsTab(
             ) {
                 Text("ラーメン提案の天候設定", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "当日の天気と気温を入力すると、おすすめトッピングの提案に反映します。",
+                    "店舗住所の天気をリアルタイム更新して、おすすめ提案に反映します。",
                     style = MaterialTheme.typography.bodySmall,
                 )
 
-                OutlinedTextField(
-                    value = weatherCityInput,
-                    onValueChange = { value ->
-                        if (value.length <= 80) {
-                            weatherCityInput = value
-                        }
-                    },
-                    label = { Text("都市名 (自動取得用)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Text("観測地点: ${MakimuraShop.ADDRESS_LABEL}", style = MaterialTheme.typography.bodySmall)
 
                 Button(
                     onClick = {
-                        val city = weatherCityInput.trim()
-                        if (city.isBlank()) {
-                            weatherSaveMessage = "都市名を入力してください。"
-                            weatherMessageIsError = true
-                            return@Button
-                        }
                         weatherLoading = true
                         weatherSaveMessage = null
                         weatherMessageIsError = false
                         scope.launch {
                             val result = withContext(Dispatchers.IO) {
-                                WeatherAutoFetch.fetchByCity(city)
+                                WeatherAutoFetch.fetchForMakimuraShop()
                             }
                             weatherLoading = false
 
@@ -1063,14 +1059,14 @@ private fun SettingsTab(
                                 onSuccess = { fetched ->
                                     selectedWeather = fetched.weatherContext.condition
                                     temperatureInput = fetched.weatherContext.temperatureC.toString()
-                                    weatherCityInput = fetched.cityLabel
+                                    weatherCityInput = MakimuraShop.ADDRESS_LABEL
 
-                                    MetricsRepository.updateWeatherCity(fetched.cityLabel)
+                                    MetricsRepository.updateWeatherCity(MakimuraShop.ADDRESS_LABEL)
                                     MetricsRepository.updateWeatherContext(
                                         fetched.weatherContext,
                                         updatedAtEpochMs = System.currentTimeMillis(),
                                     )
-                                    weatherSaveMessage = "自動取得しました: ${fetched.cityLabel}"
+                                    weatherSaveMessage = "店舗天気を更新しました。"
                                     weatherMessageIsError = false
                                 },
                                 onFailure = { error ->
@@ -1090,7 +1086,7 @@ private fun SettingsTab(
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        Text("天気を自動取得")
+                        Text("店舗天気を今すぐ更新")
                     }
                 }
 
@@ -1125,13 +1121,6 @@ private fun SettingsTab(
 
                 Button(
                     onClick = {
-                        val city = weatherCityInput.trim()
-                        if (city.isBlank()) {
-                            weatherSaveMessage = "都市名を入力してください。"
-                            weatherMessageIsError = true
-                            return@Button
-                        }
-
                         val temperature = temperatureInput.toIntOrNull()
                         if (temperature == null || temperature !in -20..45) {
                             weatherSaveMessage = "気温は -20〜45 °C の範囲で入力してください。"
@@ -1145,7 +1134,7 @@ private fun SettingsTab(
                                 temperatureC = temperature,
                             )
                         )
-                        MetricsRepository.updateWeatherCity(city)
+                        MetricsRepository.updateWeatherCity(MakimuraShop.ADDRESS_LABEL)
                         weatherSaveMessage = "天候設定を保存しました。"
                         weatherMessageIsError = false
                     },
@@ -1267,6 +1256,8 @@ private fun MetricsCard(metrics: TodayMetrics) {
 private fun RecommendationCard(
     weatherContext: WeatherContext,
     recommendation: RamenRecommendation,
+    weatherCity: String,
+    weatherUpdatedAtEpochMs: Long,
 ) {
     AppCard(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -1279,6 +1270,10 @@ private fun RecommendationCard(
                 text = "麺家まきむら 今日のおすすめ",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = weatherCity,
+                style = MaterialTheme.typography.bodySmall,
             )
             MetricRow("天気", "${weatherLabel(weatherContext.condition)} / ${weatherContext.temperatureC}°C")
             MetricRow("提案タイプ", recommendationTierLabel(recommendation.tier))
@@ -1295,6 +1290,12 @@ private fun RecommendationCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
+            if (weatherUpdatedAtEpochMs > 0L) {
+                Text(
+                    text = "天気更新: ${formatDateTime(weatherUpdatedAtEpochMs)}",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }
