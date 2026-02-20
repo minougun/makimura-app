@@ -35,8 +35,27 @@ object WeatherAutoFetch {
 
     @WorkerThread
     fun fetchForMakimuraShop(): Result<WeatherFetchResult> {
-        return fetchByCity(MakimuraShop.WEATHER_QUERY).map { result ->
+        return fetchByCoordinates(
+            latitude = MakimuraShop.LATITUDE,
+            longitude = MakimuraShop.LONGITUDE,
+            cityLabel = MakimuraShop.ADDRESS_LABEL,
+        ).map { result ->
             result.copy(cityLabel = MakimuraShop.ADDRESS_LABEL)
+        }
+    }
+
+    @WorkerThread
+    fun fetchByCoordinates(
+        latitude: Double,
+        longitude: Double,
+        cityLabel: String,
+    ): Result<WeatherFetchResult> {
+        return runCatching {
+            val weatherContext = fetchCurrentWeather(latitude = latitude, longitude = longitude)
+            WeatherFetchResult(
+                cityLabel = cityLabel.trim().ifBlank { MakimuraShop.ADDRESS_LABEL },
+                weatherContext = weatherContext,
+            )
         }
     }
 

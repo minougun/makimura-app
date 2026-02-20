@@ -145,6 +145,7 @@ private fun PedometerScreen() {
         RamenRecommendationEngine.recommend(uiState.metrics, uiState.weatherContext)
     }
     var autoWeatherRefreshRunning by remember { mutableStateOf(false) }
+    var initialWeatherRefreshAttempted by rememberSaveable { mutableStateOf(false) }
 
     val permissions = remember { requiredPermissions() }
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.HOME) }
@@ -167,10 +168,12 @@ private fun PedometerScreen() {
         while (isActive) {
             val latestState = MetricsRepository.uiState.value
             val mustSwitchToShopAddress = latestState.weatherCity != MakimuraShop.ADDRESS_LABEL
-            val shouldRefreshNow = mustSwitchToShopAddress || WeatherRefreshPolicy.shouldAutoRefresh(
-                updatedAtEpochMs = latestState.weatherUpdatedAtEpochMs,
-                staleDurationMs = MakimuraShop.WEATHER_REFRESH_INTERVAL_MS,
-            )
+            val shouldRefreshNow = !initialWeatherRefreshAttempted ||
+                mustSwitchToShopAddress ||
+                WeatherRefreshPolicy.shouldAutoRefresh(
+                    updatedAtEpochMs = latestState.weatherUpdatedAtEpochMs,
+                    staleDurationMs = MakimuraShop.WEATHER_REFRESH_INTERVAL_MS,
+                )
 
             if (!autoWeatherRefreshRunning && shouldRefreshNow) {
                 autoWeatherRefreshRunning = true
@@ -186,6 +189,7 @@ private fun PedometerScreen() {
                 }.onFailure { error ->
                     Log.w(WEATHER_INPUT_TAG, "Auto weather refresh failed", error)
                 }
+                initialWeatherRefreshAttempted = true
                 autoWeatherRefreshRunning = false
             }
 
