@@ -1,12 +1,12 @@
 {
-  "name": "Pedometer Web",
-  "short_name": "Pedometer",
-  "description": "iOS / Android ブラウザで使える歩数計Webアプリ",
+  "name": "麺家まきむら",
+  "short_name": "まきむら",
+  "description": "その日の運動量と天気で、今日の一杯を提案",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#fff4df",
-  "theme_color": "#d46a2d",
+  "theme_color": "#7D1F12",
   "icons": [
     {
       "src": "./icon.svg",
