@@ -1,0 +1,125 @@
+{
+  "updatedAt": "2026-02-20",
+  "currency": "JPY",
+  "items": [
+    {
+      "id": "ramen_basic",
+      "name": "ラーメン",
+      "priceYen": 600,
+      "category": "RAMEN",
+      "sortOrder": 10
+    },
+    {
+      "id": "topping_negi",
+      "name": "ねぎ",
+      "priceYen": 120,
+      "category": "TOPPING",
+      "sortOrder": 100
+    },
+    {
+      "id": "topping_garlic",
+      "name": "ニンニク",
+      "priceYen": 100,
+      "category": "TOPPING",
+      "sortOrder": 110
+    },
+    {
+      "id": "topping_corn",
+      "name": "コーン",
+      "priceYen": 100,
+      "category": "TOPPING",
+      "sortOrder": 120
+    },
+    {
+      "id": "topping_egg",
+      "name": "煮卵",
+      "priceYen": 150,
+      "category": "TOPPING",
+      "sortOrder": 130
+    },
+    {
+      "id": "topping_menma",
+      "name": "メンマ",
+      "priceYen": 150,
+      "category": "TOPPING",
+      "sortOrder": 140
+    },
+    {
+      "id": "topping_kimchi",
+      "name": "キムチ",
+      "priceYen": 150,
+      "category": "TOPPING",
+      "sortOrder": 150
+    },
+    {
+      "id": "topping_natto",
+      "name": "納豆",
+      "priceYen": 150,
+      "category": "TOPPING",
+      "sortOrder": 160
+    },
+    {
+      "id": "rice_plain",
+      "name": "ご飯",
+      "priceYen": 200,
+      "category": "RICE",
+      "sortOrder": 200
+    },
+    {
+      "id": "rice_mini_chashu_bowl",
+      "name": "ミニチャーシュー丼",
+      "priceYen": 370,
+      "category": "RICE",
+      "sortOrder": 210
+    },
+    {
+      "id": "rice_mentaiko",
+      "name": "明太子ご飯",
+      "priceYen": 370,
+      "category": "RICE",
+      "sortOrder": 220
+    },
+    {
+      "id": "extra_noodles",
+      "name": "替玉",
+      "priceYen": 170,
+      "category": "TOPPING",
+      "sortOrder": 170
+    },
+    {
+      "id": "drink_beer",
+      "name": "瓶ビール",
+      "priceYen": 650,
+      "category": "DRINK",
+      "sortOrder": 300
+    },
+    {
+      "id": "drink_chuhai_plain",
+      "name": "プレーンチューハイ",
+      "priceYen": 500,
+      "category": "DRINK",
+      "sortOrder": 310
+    },
+    {
+      "id": "drink_shochu_barley",
+      "name": "麦焼酎",
+      "priceYen": 500,
+      "category": "DRINK",
+      "sortOrder": 320
+    },
+    {
+      "id": "drink_shochu_sweet_potato",
+      "name": "芋焼酎",
+      "priceYen": 500,
+      "category": "DRINK",
+      "sortOrder": 330
+    },
+    {
+      "id": "drink_kakuhigh",
+      "name": "角ハイボール",
+      "priceYen": 550,
+      "category": "DRINK",
+      "sortOrder": 340
+    }
+  ]
+}
