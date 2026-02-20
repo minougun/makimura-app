@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">麺屋まきむら</string>
+    <string name="app_name">麺家まきむら</string>
     <string name="start_tracking">計測を開始</string>
     <string name="stop_tracking">計測を停止</string>
     <string name="notification_title">運動計測中</string>

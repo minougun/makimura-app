@@ -176,7 +176,7 @@ private fun PedometerScreen() {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = "麺屋まきむら",
+                    text = "麺家まきむら",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -1252,7 +1252,7 @@ private fun RecommendationCard(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "麺屋まきむら 今日のおすすめ",
+                text = "麺家まきむら 今日のおすすめ",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
