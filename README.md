@@ -87,6 +87,34 @@ APK:
 
 - `app/build/outputs/apk/debug/app-debug.apk`
 
+## Web版 (iOS/Android/PCブラウザ)
+
+`web/` にブラウザ向け実装を追加しています。主な機能:
+
+- Today / History / Settings の3タブUI
+- `DeviceMotion` ベースの歩数推定（iOSの権限要求に対応）
+- Android版と同等の歩幅・カロリー推定ロジック
+- 日付切り替え時の日次履歴アーカイブ
+- 期間フィルタ（全期間 / 7日 / 30日）とCSVエクスポート
+- LocalStorage 永続化
+- PWA対応（`manifest.webmanifest` + `sw.js`）
+
+起動例:
+
+```bash
+cd /mnt/c/Users/minou/pedometer-app/web
+python3 -m http.server 8080
+```
+
+ブラウザで `http://localhost:8080` を開きます。
+
+注意:
+
+- iOS Safari は「計測開始」時にモーション許可が必要です。
+- センサー権限や対応状況により、端末によっては精度差があります。
+- `file://` 直開きでは PWA / センサー権限が制限されるため、HTTP(S)配信で利用してください。
+- 体重などの設定値はブラウザの `localStorage` に保存されるため、共用端末では使用後にデータ削除を推奨します。
+
 ## 権限
 
 - `ACTIVITY_RECOGNITION`
