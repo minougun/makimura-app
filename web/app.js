@@ -57,7 +57,7 @@ const MENU_ITEMS = [
 
 const PRICE_TABLE = Object.fromEntries(MENU_ITEMS.map((i) => [i.name, i.priceYen]));
 const REQUIRED_NAMES = new Set(MENU_ITEMS.filter((i) => i.required).map((i) => i.name));
-const CHASHU_NAMES = ["チャーシュー1枚", "チャーシュー2枚", "チャーシュー3枚"];
+const CHASHU_NAMES = MENU_ITEMS.filter((i) => i.id.startsWith("chashu_")).map((i) => i.name);
 
 // ===== Recommendation Engine =====
 function recommend(metrics, weatherContext) {
