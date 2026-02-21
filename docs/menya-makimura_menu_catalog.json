@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-02-20",
+  "updatedAt": "2026-02-21",
   "currency": "JPY",
   "items": [
     {
@@ -57,6 +57,27 @@
       "priceYen": 150,
       "category": "TOPPING",
       "sortOrder": 160
+    },
+    {
+      "id": "topping_chashu_1",
+      "name": "チャーシュー1枚",
+      "priceYen": 120,
+      "category": "TOPPING",
+      "sortOrder": 161
+    },
+    {
+      "id": "topping_chashu_2",
+      "name": "チャーシュー2枚",
+      "priceYen": 240,
+      "category": "TOPPING",
+      "sortOrder": 162
+    },
+    {
+      "id": "topping_chashu_3",
+      "name": "チャーシュー3枚",
+      "priceYen": 360,
+      "category": "TOPPING",
+      "sortOrder": 163
     },
     {
       "id": "rice_plain",
