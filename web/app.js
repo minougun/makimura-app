@@ -22,7 +22,7 @@ const MAX_WEIGHT_KG = 200.0;
 // Shop
 const SHOP_LAT = 34.752251;
 const SHOP_LON = 135.546295;
-const SHOP_ADDRESS = "〒533-0005 大阪府大阪市東淀川区瑞光4丁目7-6 ビスタ瑞光北";
+const SHOP_ADDRESS = "〒533-0005 大阪府大阪市東淀川区瑞光4-7-6ビスタ瑞光101";
 
 // ===== Menu Catalog =====
 const MENU_CATEGORIES = [
