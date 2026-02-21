@@ -41,6 +41,9 @@ const MENU_ITEMS = [
   { id: "menma", name: "メンマ", priceYen: 150, category: "TOPPING" },
   { id: "kimchi", name: "キムチ", priceYen: 150, category: "TOPPING" },
   { id: "natto", name: "納豆", priceYen: 150, category: "TOPPING" },
+  { id: "chashu_1", name: "チャーシュー1枚", priceYen: 120, category: "TOPPING" },
+  { id: "chashu_2", name: "チャーシュー2枚", priceYen: 240, category: "TOPPING" },
+  { id: "chashu_3", name: "チャーシュー3枚", priceYen: 360, category: "TOPPING" },
   { id: "extra_noodles", name: "替玉", priceYen: 170, category: "TOPPING" },
   { id: "rice_plain", name: "ご飯", priceYen: 200, category: "RICE" },
   { id: "rice_mini_chashu", name: "ミニチャーシュー丼", priceYen: 370, category: "RICE" },
@@ -54,6 +57,7 @@ const MENU_ITEMS = [
 
 const PRICE_TABLE = Object.fromEntries(MENU_ITEMS.map((i) => [i.name, i.priceYen]));
 const REQUIRED_NAMES = new Set(MENU_ITEMS.filter((i) => i.required).map((i) => i.name));
+const CHASHU_NAMES = ["チャーシュー1枚", "チャーシュー2枚", "チャーシュー3枚"];
 
 // ===== Recommendation Engine =====
 function recommend(metrics, weatherContext) {
@@ -81,6 +85,17 @@ function recommend(metrics, weatherContext) {
     reasons.push("高気温なのでさっぱり系を優先");
   } else {
     reasons.push("気温は中間帯なので標準バランス");
+  }
+
+  // Chashu recommendation based on exercise tier and weather
+  if (tier === "REWARD") {
+    addIfMissing(selectedNames, "チャーシュー3枚");
+    reasons.push("高運動量なのでチャーシュー3枚でタンパク質補給");
+  } else if (tier === "BALANCE" && isColdOrWet) {
+    addIfMissing(selectedNames, "チャーシュー2枚");
+    reasons.push("寒い日はチャーシュー2枚で栄養補給");
+  } else if (tier === "BALANCE") {
+    addIfMissing(selectedNames, "チャーシュー1枚");
   }
 
   const items = selectedNames.map((name) => ({ name, priceYen: PRICE_TABLE[name] ?? 0 }));
@@ -509,11 +524,17 @@ function buildMenuCatalog() {
 }
 
 function toggleOrderItem(name) {
-  const idx = state.orderSelectedNames.indexOf(name);
-  if (idx >= 0) {
-    state.orderSelectedNames.splice(idx, 1);
+  if (CHASHU_NAMES.includes(name)) {
+    const wasSelected = state.orderSelectedNames.includes(name);
+    state.orderSelectedNames = state.orderSelectedNames.filter((n) => !CHASHU_NAMES.includes(n));
+    if (!wasSelected) state.orderSelectedNames.push(name);
   } else {
-    state.orderSelectedNames.push(name);
+    const idx = state.orderSelectedNames.indexOf(name);
+    if (idx >= 0) {
+      state.orderSelectedNames.splice(idx, 1);
+    } else {
+      state.orderSelectedNames.push(name);
+    }
   }
   schedulePersist();
   renderOrderChips();
