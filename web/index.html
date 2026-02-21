@@ -63,6 +63,14 @@
       <!-- 注文 -->
       <section id="tab-order" class="tab-panel is-hidden" data-tab-panel="order">
         <article class="card">
+          <h3>現在の注文</h3>
+          <div id="current-order" class="metric-list"></div>
+          <div class="metric-row total-row">
+            <span>合計</span><span id="order-total">¥600</span>
+          </div>
+        </article>
+
+        <article class="card">
           <h2>トッピングを選ぶ</h2>
           <p class="muted">ラーメンは必須で選択済み。好みでトッピング・ご飯・ドリンクを追加できます。</p>
           <div class="button-row">
@@ -72,14 +80,6 @@
         </article>
 
         <div id="menu-catalog"></div>
-
-        <article class="card">
-          <h3>現在の注文</h3>
-          <div id="current-order" class="metric-list"></div>
-          <div class="metric-row total-row">
-            <span>合計</span><span id="order-total">¥600</span>
-          </div>
-        </article>
       </section>
 
       <!-- 運動 -->
