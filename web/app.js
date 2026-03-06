@@ -87,7 +87,6 @@ function recommend(metrics, weatherContext) {
     reasons.push("気温は中間帯なので標準バランス");
   }
 
-  // Chashu recommendation based on exercise tier and weather
   if (tier === "REWARD") {
     addIfMissing(selectedNames, "チャーシュー3枚");
     reasons.push("高運動量なのでチャーシュー3枚でタンパク質補給");
@@ -96,6 +95,7 @@ function recommend(metrics, weatherContext) {
     reasons.push("寒い日はチャーシュー2枚で栄養補給");
   } else if (tier === "BALANCE") {
     addIfMissing(selectedNames, "チャーシュー1枚");
+    reasons.push("バランス運動量なのでチャーシュー1枚を追加");
   }
 
   const items = selectedNames.map((name) => ({ name, priceYen: PRICE_TABLE[name] ?? 0 }));
