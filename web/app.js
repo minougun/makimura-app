@@ -167,6 +167,7 @@ const runtime = {
 
 let persistTimer = 0;
 let weatherRefreshTimer = null;
+let weatherInitialFetchTimer = 0;
 let midnightResetTimer = null;
 let metricsRenderTimer = 0;
 let lastMetricsRenderAtMs = 0;
@@ -436,6 +437,18 @@ function bindEvents() {
 
     stopBackgroundTimers();
     flushPendingPersist();
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    scheduleWeatherAutoRefresh();
+    void recoverFromBackground();
+  });
+
+  window.addEventListener("online", () => {
+    scheduleWeatherAutoRefresh();
+    void fetchWeatherNow();
+    void recoverFromBackground();
   });
 }
 
@@ -924,6 +937,10 @@ function weatherConditionFromCode(code) {
 
 function scheduleWeatherAutoRefresh() {
   if (weatherRefreshTimer) clearInterval(weatherRefreshTimer);
+  if (weatherInitialFetchTimer) {
+    clearTimeout(weatherInitialFetchTimer);
+    weatherInitialFetchTimer = 0;
+  }
   if (document.visibilityState === "hidden") return;
 
   // Initial fetch after short delay (non-blocking)
@@ -932,7 +949,10 @@ function scheduleWeatherAutoRefresh() {
     Date.now() - state.weatherUpdatedAtEpochMs >= WEATHER_REFRESH_MS;
 
   if (shouldFetchNow) {
-    setTimeout(() => { fetchWeatherNow(); }, 800);
+    weatherInitialFetchTimer = window.setTimeout(() => {
+      weatherInitialFetchTimer = 0;
+      fetchWeatherNow();
+    }, 800);
   }
 
   // Auto-refresh every 3 hours
@@ -1049,6 +1069,10 @@ function stopBackgroundTimers() {
   if (weatherRefreshTimer) {
     clearInterval(weatherRefreshTimer);
     weatherRefreshTimer = null;
+  }
+  if (weatherInitialFetchTimer) {
+    clearTimeout(weatherInitialFetchTimer);
+    weatherInitialFetchTimer = 0;
   }
   if (midnightResetTimer) {
     clearTimeout(midnightResetTimer);

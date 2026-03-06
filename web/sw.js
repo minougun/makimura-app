@@ -1,4 +1,4 @@
-const CACHE_NAME = "makimura-web-v2";
+const CACHE_NAME = "makimura-web-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,20 @@ const ASSETS = [
   "./manifest.webmanifest",
   "./icon.svg",
 ];
+const CACHEABLE_DESTINATIONS = new Set([
+  "document",
+  "script",
+  "style",
+  "image",
+  "font",
+  "manifest",
+]);
+
+function isCacheableRequest(request) {
+  if (request.mode === "navigate") return true;
+  if (request.destination && CACHEABLE_DESTINATIONS.has(request.destination)) return true;
+  return false;
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -36,6 +50,7 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+  if (!isCacheableRequest(event.request)) return;
 
   event.respondWith(
     fetch(event.request)
