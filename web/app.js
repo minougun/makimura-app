@@ -2,7 +2,10 @@
 const STORAGE_KEY = "makimura_app_state_v1";
 const MS_PER_DAY = 86_400_000;
 const HISTORY_LIMIT = 365;
-const WEATHER_REFRESH_MS = 15 * 60 * 1_000;
+const WEATHER_REFRESH_MS = 3 * 60 * 60 * 1_000;
+const WEATHER_FETCH_TIMEOUT_MS = 8_000;
+const WEATHER_FETCH_RETRY_LIMIT = 1;
+const METRICS_RENDER_INTERVAL_MS = 120;
 
 // Step sensor
 const CADENCE_WINDOW_MS = 12_000;
@@ -164,6 +167,9 @@ const runtime = {
 
 let persistTimer = 0;
 let weatherRefreshTimer = null;
+let midnightResetTimer = null;
+let metricsRenderTimer = 0;
+let lastMetricsRenderAtMs = 0;
 
 // ===== DOM refs =====
 const els = {
@@ -264,6 +270,7 @@ ensureCurrentDay();
 renderAll();
 registerServiceWorker();
 scheduleWeatherAutoRefresh();
+scheduleMidnightReset();
 
 // ===== Event binding =====
 function bindEvents() {
@@ -411,10 +418,24 @@ function bindEvents() {
   });
 
   window.addEventListener("beforeunload", () => {
-    if (!persistTimer) return;
-    clearTimeout(persistTimer);
-    persistTimer = 0;
-    persistState();
+    stopBackgroundTimers();
+    flushPendingPersist();
+  });
+
+  window.addEventListener("pagehide", () => {
+    stopBackgroundTimers();
+    flushPendingPersist();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      scheduleWeatherAutoRefresh();
+      void recoverFromBackground();
+      return;
+    }
+
+    stopBackgroundTimers();
+    flushPendingPersist();
   });
 }
 
@@ -854,15 +875,43 @@ async function fetchWeatherNow() {
 async function fetchWeatherForShop() {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${SHOP_LAT}&longitude=${SHOP_LON}&current=temperature_2m,weather_code&timezone=auto`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`天気APIエラー(${response.status})`);
-  const data = await response.json();
-  const current = data.current;
-  if (!current) throw new Error("天気データを取得できませんでした。");
-  return {
-    condition: weatherConditionFromCode(current.weather_code),
-    temperatureC: Math.round(current.temperature_2m),
-  };
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= WEATHER_FETCH_RETRY_LIMIT; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), WEATHER_FETCH_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`天気APIエラー(${response.status})`);
+
+      const data = await response.json();
+      const current = data.current;
+      if (!current) throw new Error("天気データを取得できませんでした。");
+
+      return {
+        condition: weatherConditionFromCode(current.weather_code),
+        temperatureC: Math.round(current.temperature_2m),
+      };
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        lastError = new Error("天気APIがタイムアウトしました。");
+      } else {
+        lastError = error instanceof Error ? error : new Error("天気データを取得できませんでした。");
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (attempt < WEATHER_FETCH_RETRY_LIMIT) {
+      await waitMs(500 * (attempt + 1));
+    }
+  }
+
+  throw lastError ?? new Error("天気データを取得できませんでした。");
 }
 
 function weatherConditionFromCode(code) {
@@ -874,6 +923,9 @@ function weatherConditionFromCode(code) {
 }
 
 function scheduleWeatherAutoRefresh() {
+  if (weatherRefreshTimer) clearInterval(weatherRefreshTimer);
+  if (document.visibilityState === "hidden") return;
+
   // Initial fetch after short delay (non-blocking)
   const shouldFetchNow =
     state.weatherUpdatedAtEpochMs === 0 ||
@@ -883,11 +935,136 @@ function scheduleWeatherAutoRefresh() {
     setTimeout(() => { fetchWeatherNow(); }, 800);
   }
 
-  // Auto-refresh every 15 minutes
+  // Auto-refresh every 3 hours
   weatherRefreshTimer = setInterval(() => {
-    const stale = Date.now() - state.weatherUpdatedAtEpochMs >= WEATHER_REFRESH_MS;
-    if (stale) fetchWeatherNow();
+    fetchWeatherNow();
   }, WEATHER_REFRESH_MS);
+}
+
+function resetMetricsData(dayEpoch) {
+  archiveMetricsIfNeeded(state.metrics);
+  state.metrics = newMetrics(dayEpoch);
+  resetCadenceRuntime();
+  schedulePersist(true);
+}
+
+function resetMetricsForNewDay(dayEpoch) {
+  resetMetricsData(dayEpoch);
+  renderActivity();
+  renderHome();
+  if (state.activitySubView === "history") renderHistory();
+}
+
+function scheduleMidnightReset() {
+  if (midnightResetTimer) clearTimeout(midnightResetTimer);
+
+  const now = new Date();
+  const nextMidnight = new Date(now);
+  nextMidnight.setHours(24, 0, 0, 0);
+
+  const delayMs = Math.max(1_000, nextMidnight.getTime() - now.getTime());
+  midnightResetTimer = setTimeout(async () => {
+    const today = currentDayEpoch();
+    const wasAlreadyToday = state.metrics.dayEpoch === today;
+    const willReset = !wasAlreadyToday;
+    const wasTracking = state.isTracking;
+
+    if (willReset) {
+      resetMetricsForNewDay(today);
+    }
+
+    if (wasTracking && willReset) {
+      if (!runtime.motionListener) {
+        try {
+          await startTracking();
+        } catch (_error) {
+          state.isTracking = false;
+          setTodayMessage("日付変更後の自動計測再開に失敗しました。手動で計測開始してください。", true);
+          scheduleMidnightReset();
+          return;
+        }
+      } else {
+        state.isTracking = true;
+        renderActivity();
+      }
+      setTodayMessage("日付が変わったため、歩数をリセットして自動で計測を再開しました。");
+    } else if (!wasTracking && willReset) {
+      setTodayMessage("日付が変わったため、歩数をリセットしました。");
+    }
+
+    scheduleMidnightReset();
+  }, delayMs);
+}
+
+async function recoverFromBackground() {
+  const changed = ensureCurrentDay();
+  if (changed) {
+    if (state.isTracking && !runtime.motionListener) {
+      try {
+        await startTracking();
+      } catch (_error) {
+        state.isTracking = false;
+        setTodayMessage("日付変更後の自動計測再開に失敗しました。手動で計測開始してください。", true);
+        renderHome();
+        if (state.activitySubView === "history") renderHistory();
+        scheduleMidnightReset();
+        return;
+      }
+      setTodayMessage("日付が変わったため、歩数をリセットして自動で計測を再開しました。");
+    } else if (state.isTracking) {
+      setTodayMessage("日付が変わったため、歩数をリセットして自動で計測を再開しました。");
+    } else {
+      renderActivity();
+      setTodayMessage("日付が変わったため、歩数をリセットしました。");
+    }
+    renderHome();
+    if (state.activitySubView === "history") renderHistory();
+  }
+  scheduleMidnightReset();
+}
+
+function scheduleMetricsRender() {
+  const now = Date.now();
+  const elapsed = now - lastMetricsRenderAtMs;
+
+  if (elapsed >= METRICS_RENDER_INTERVAL_MS && !metricsRenderTimer) {
+    lastMetricsRenderAtMs = now;
+    renderActivity();
+    renderHome();
+    return;
+  }
+
+  if (metricsRenderTimer) return;
+
+  const delayMs = Math.max(16, METRICS_RENDER_INTERVAL_MS - elapsed);
+  metricsRenderTimer = window.setTimeout(() => {
+    metricsRenderTimer = 0;
+    lastMetricsRenderAtMs = Date.now();
+    renderActivity();
+    renderHome();
+  }, delayMs);
+}
+
+function stopBackgroundTimers() {
+  if (weatherRefreshTimer) {
+    clearInterval(weatherRefreshTimer);
+    weatherRefreshTimer = null;
+  }
+  if (midnightResetTimer) {
+    clearTimeout(midnightResetTimer);
+    midnightResetTimer = null;
+  }
+  if (metricsRenderTimer) {
+    clearTimeout(metricsRenderTimer);
+    metricsRenderTimer = 0;
+  }
+}
+
+function flushPendingPersist() {
+  if (!persistTimer) return;
+  clearTimeout(persistTimer);
+  persistTimer = 0;
+  persistState();
 }
 
 // ===== Tracking =====
@@ -1003,8 +1180,7 @@ function recordStep(timestampMs) {
   };
 
   schedulePersist();
-  renderActivity();
-  renderHome();
+  scheduleMetricsRender();
 }
 
 function calculateMovementDelta(nowMs) {
@@ -1086,10 +1262,7 @@ function ensureCurrentDay() {
   const today = currentDayEpoch();
   if (state.metrics.dayEpoch === today) return false;
 
-  archiveMetricsIfNeeded(state.metrics);
-  state.metrics = newMetrics(today);
-  resetCadenceRuntime();
-  schedulePersist(true);
+  resetMetricsData(today);
   return true;
 }
 
@@ -1591,6 +1764,12 @@ function clamp(value, min, max) {
 
 function pad2(value) {
   return String(value).padStart(2, "0");
+}
+
+function waitMs(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 async function registerServiceWorker() {

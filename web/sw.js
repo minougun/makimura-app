@@ -1,4 +1,4 @@
-const CACHE_NAME = "pedometer-web-v1";
+const CACHE_NAME = "makimura-web-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -32,6 +32,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  if (event.request.cache === "only-if-cached" && event.request.mode !== "same-origin") return;
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
