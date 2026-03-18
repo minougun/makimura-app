@@ -35,6 +35,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -131,6 +132,13 @@ private val PedometerColorScheme = lightColorScheme(
     onBackground = Color(0xFF1E1A16),
     surface = Color(0xFFFEFAF3),
     onSurface = Color(0xFF1E1A16),
+)
+
+@Composable
+private fun recommendationChipColors() = FilterChipDefaults.filterChipColors(
+    selectedContainerColor = MaterialTheme.colorScheme.secondary,
+    selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
+    selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondary,
 )
 
 @Composable
@@ -1449,6 +1457,7 @@ private fun SettingsTab(
 private fun RecommendationPreferencesCard(
     recommendationPreferences: RecommendationPreferences,
 ) {
+    val chipColors = recommendationChipColors()
     AppCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
@@ -1469,6 +1478,7 @@ private fun RecommendationPreferencesCard(
                                 recommendationPreferences.copy(appetiteLevel = level)
                             )
                         },
+                        colors = chipColors,
                         label = { Text(appetiteLabel(level)) },
                     )
                 }
@@ -1484,6 +1494,7 @@ private fun RecommendationPreferencesCard(
                                 recommendationPreferences.copy(moodPreference = mood)
                             )
                         },
+                        colors = chipColors,
                         label = { Text(moodLabel(mood)) },
                     )
                 }
@@ -1515,6 +1526,7 @@ private fun RecommendationPreferencesCard(
                                 recommendationPreferences.copy(excludedToppings = nextExcluded)
                             )
                         },
+                        colors = chipColors,
                         label = { Text(name) },
                     )
                 }
@@ -1664,16 +1676,16 @@ private fun RecommendationCard(
                 title = "提案理由",
                 body = if (showDetailedReason) detailedReason else shortReason,
             )
+            RecommendationInfoPanel(
+                title = "反映中の条件",
+                body = recommendationPreferenceSummary(recommendationPreferences),
+            )
             if (showDetailedReason && recommendationPreferences.crowdNote.isNotBlank()) {
                 RecommendationMemoPanel(
                     title = "混雑メモ",
                     body = recommendationPreferences.crowdNote.trim(),
                 )
             }
-            RecommendationInfoPanel(
-                title = "反映中の条件",
-                body = recommendationPreferenceSummary(recommendationPreferences),
-            )
             if (weatherUpdatedAtEpochMs > 0L) {
                 Text(
                     text = "天気更新: ${formatDateTime(weatherUpdatedAtEpochMs)}",

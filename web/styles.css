@@ -315,6 +315,12 @@ h3 {
   border-color: transparent;
 }
 
+.chip:active {
+  background: linear-gradient(100deg, var(--primary), #c73a27);
+  color: #fff;
+  border-color: transparent;
+}
+
 .chip:disabled {
   opacity: 0.75;
   cursor: default;
