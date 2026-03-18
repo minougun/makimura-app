@@ -5,15 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#7D1F12">
   <title>麺家まきむら</title>
-  <script>
-    (function () {
-      var dedicatedOrigin = "https://pedometer-app-two.vercel.app";
-      var isLegacyOrigin = window.location.hostname === "minougun.github.io";
-      if (!isLegacyOrigin) return;
-      var nextPath = window.location.pathname.replace(/^\/makimura-app/, "") || "/";
-      window.location.replace(dedicatedOrigin + nextPath + window.location.search + window.location.hash);
-    })();
-  </script>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="stylesheet" href="./styles.css">

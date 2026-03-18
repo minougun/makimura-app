@@ -129,7 +129,7 @@ python3 -m http.server 8080
 - 端末への永続保存を有効にした場合も、`localStorage` に残すのは好み設定・天気設定・注文状態だけです。
 - 歩数メトリクス・履歴・体重などはセッション限定に留め、タブを閉じると破棄します。
 - 共用端末では永続保存をオフのまま使い、必要に応じて「保存データを削除」を実行してください。
-- Web版の本番URLは `https://pedometer-app-two.vercel.app/` です。`https://minougun.github.io/makimura-app/` は専用オリジンへ転送します。
+- Web版の本番URLは `https://minougun.github.io/makimura-app/` です。
 
 ## 権限
 
