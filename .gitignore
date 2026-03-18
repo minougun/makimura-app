@@ -11,7 +11,9 @@
 /.tooling/
 /.claude/
 /.kotlin/
+/.vercel/
 /local.properties.wsl
 keystore.properties
 *.jks
 *.keystore
+.vercel

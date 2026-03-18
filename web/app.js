@@ -1958,12 +1958,21 @@ function loadState() {
   };
 
   const persistOptIn = readPersistPreference();
-  let parsed = readStoredState(persistOptIn);
+  const storedState = readStoredState();
+  const sessionState = storedState.session;
+  let parsed = mergeStoredState({
+    persistent: persistOptIn ? storedState.persistent : null,
+    session: sessionState,
+  });
   let pendingStorageMigration = false;
 
   if (parsed == null) {
-    parsed = readLegacyStoredState();
-    if (parsed != null) {
+    const legacyParsed = readLegacyStoredState();
+    if (legacyParsed != null) {
+      parsed = mergeStoredState({
+        persistent: extractPersistentState(legacyParsed),
+        session: sessionState,
+      });
       pendingStorageMigration = true;
       clearLegacyStoredState();
     }
@@ -2027,7 +2036,7 @@ function schedulePersist(immediate = false) {
 
 function persistState() {
   try {
-    const serializedState = JSON.stringify({
+    const sessionState = JSON.stringify({
       profile: state.profile,
       metrics: state.metrics,
       history: state.history,
@@ -2038,13 +2047,15 @@ function persistState() {
       weatherUpdatedAtEpochMs: state.weatherUpdatedAtEpochMs,
       orderSelectedNames: state.orderSelectedNames,
     });
-    const activeStorage = getActiveStateStorage(state.persistOptIn);
-    const inactiveStorage = getInactiveStateStorage(state.persistOptIn);
-    const activeKey = getActiveStateKey(state.persistOptIn);
-    const inactiveKey = getInactiveStateKey(state.persistOptIn);
-
-    activeStorage?.setItem(activeKey, serializedState);
-    inactiveStorage?.removeItem(inactiveKey);
+    window.sessionStorage.setItem(SESSION_STORAGE_KEY, sessionState);
+    if (state.persistOptIn) {
+      window.localStorage.setItem(
+        LOCAL_STORAGE_KEY,
+        JSON.stringify(extractPersistentState(state)),
+      );
+    } else {
+      window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+    }
     clearLegacyStoredState();
   } catch (_error) {
     setTodayMessage("データ保存に失敗しました。ブラウザ容量またはプライベートモードを確認してください。", true);
@@ -2416,8 +2427,8 @@ async function registerServiceWorker() {
 function renderPersistenceModeNote() {
   if (!els.persistModeNote) return;
   els.persistModeNote.textContent = state.persistOptIn
-    ? "永続保存: ON。設定と履歴をこの端末のブラウザに保存します。"
-    : "永続保存: OFF。このタブを閉じると設定と履歴を破棄します。";
+    ? "永続保存: ON。好み設定・天気設定・注文だけをこの端末に保存します。"
+    : "永続保存: OFF。このタブを閉じると一時データを破棄します。";
 }
 
 function readPersistPreference() {
@@ -2440,10 +2451,11 @@ function writePersistPreference(enabled) {
   }
 }
 
-function readStoredState(persistOptIn) {
-  const storage = getActiveStateStorage(persistOptIn);
-  const key = getActiveStateKey(persistOptIn);
-  return readJsonFromStorage(storage, key);
+function readStoredState() {
+  return {
+    session: readJsonFromStorage(window.sessionStorage, SESSION_STORAGE_KEY),
+    persistent: readJsonFromStorage(window.localStorage, LOCAL_STORAGE_KEY),
+  };
 }
 
 function readLegacyStoredState() {
@@ -2481,18 +2493,28 @@ function clearLegacyStoredState() {
   }
 }
 
-function getActiveStateStorage(persistOptIn) {
-  return persistOptIn ? window.localStorage : window.sessionStorage;
+function extractPersistentState(source) {
+  return {
+    recommendationPreferences: normalizeRecommendationPreferences(source?.recommendationPreferences),
+    weatherContext: {
+      condition: ["SUNNY", "CLOUDY", "RAINY", "SNOWY"].includes(source?.weatherContext?.condition)
+        ? source.weatherContext.condition
+        : "SUNNY",
+      temperatureC: typeof source?.weatherContext?.temperatureC === "number"
+        ? Math.round(clamp(source.weatherContext.temperatureC, -20, 45))
+        : 20,
+    },
+    weatherUpdatedAtEpochMs: toInteger(source?.weatherUpdatedAtEpochMs, 0),
+    orderSelectedNames: Array.isArray(source?.orderSelectedNames)
+      ? source.orderSelectedNames.filter((name) => typeof name === "string" && PRICE_TABLE[name] != null)
+      : [],
+  };
 }
 
-function getInactiveStateStorage(persistOptIn) {
-  return persistOptIn ? window.sessionStorage : window.localStorage;
-}
-
-function getActiveStateKey(persistOptIn) {
-  return persistOptIn ? LOCAL_STORAGE_KEY : SESSION_STORAGE_KEY;
-}
-
-function getInactiveStateKey(persistOptIn) {
-  return persistOptIn ? SESSION_STORAGE_KEY : LOCAL_STORAGE_KEY;
+function mergeStoredState({ persistent, session }) {
+  if (!persistent && !session) return null;
+  return {
+    ...(persistent && typeof persistent === "object" ? persistent : {}),
+    ...(session && typeof session === "object" ? session : {}),
+  };
 }

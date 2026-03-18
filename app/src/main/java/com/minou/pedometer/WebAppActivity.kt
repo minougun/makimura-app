@@ -74,6 +74,6 @@ class WebAppActivity : ComponentActivity() {
     }
 
     private companion object {
-        const val WEB_APP_URL = "https://minougun.github.io/makimura-app/"
+        const val WEB_APP_URL = "https://pedometer-app-two.vercel.app/"
     }
 }
