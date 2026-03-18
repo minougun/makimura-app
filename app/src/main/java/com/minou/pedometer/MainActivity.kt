@@ -1664,6 +1664,12 @@ private fun RecommendationCard(
                 title = "提案理由",
                 body = if (showDetailedReason) detailedReason else shortReason,
             )
+            if (showDetailedReason && recommendationPreferences.crowdNote.isNotBlank()) {
+                RecommendationMemoPanel(
+                    title = "混雑メモ",
+                    body = recommendationPreferences.crowdNote.trim(),
+                )
+            }
             RecommendationInfoPanel(
                 title = "反映中の条件",
                 body = recommendationPreferenceSummary(recommendationPreferences),
@@ -1708,6 +1714,35 @@ private fun RecommendationInfoPanel(
     }
 }
 
+@Composable
+private fun RecommendationMemoPanel(
+    title: String,
+    body: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = Color(0xAA7A4C1A),
+                shape = RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = Color(0xFFFFE4BE),
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFFFFF5E8),
+        )
+    }
+}
+
 private fun buildDetailedRecommendationReason(
     recommendation: RamenRecommendation,
     weatherContext: WeatherContext,
@@ -1728,9 +1763,6 @@ private fun buildDetailedRecommendationReason(
     lines += "空腹度は「${appetiteLabel(preferences.appetiteLevel)}」、気分は「${moodLabel(preferences.moodPreference)}」として反映しています。"
     if (preferences.excludedToppings.isNotEmpty()) {
         lines += "苦手設定の ${preferences.excludedToppings.sorted().joinToString(" / ")} は候補から外しました。"
-    }
-    if (preferences.crowdNote.isNotBlank()) {
-        lines += preferences.crowdNote.trim()
     }
     lines += "最終的には ${recommendation.items.joinToString(" + ") { it.name }} を提案し、合計は ${formatYen(recommendation.totalYen)} です。"
     return lines.joinToString("\n")

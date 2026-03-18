@@ -214,10 +214,6 @@ function detailedRecommendationReason(metrics, weatherContext, preferences, reco
   if (preferences.excludedToppings.length > 0) {
     lines.push(`苦手設定の ${preferences.excludedToppings.join(" / ")} は候補から外しました。`);
   }
-  if (preferences.crowdNote && preferences.crowdNote.trim().length > 0) {
-    lines.push(preferences.crowdNote.trim());
-  }
-
   lines.push(`最終的に ${recommendation.items.map((item) => item.name).join(" + ")} を提案し、合計は ${formatYen(recommendation.totalYen)} です。`);
   return lines.join("\n");
 }
@@ -342,6 +338,8 @@ const els = {
   recTotal: document.getElementById("rec-total"),
   toggleReasonDetail: document.getElementById("toggle-reason-detail"),
   recReason: document.getElementById("rec-reason"),
+  recCrowdNoteCard: document.getElementById("rec-crowd-note-card"),
+  recCrowdNote: document.getElementById("rec-crowd-note"),
   recPreferenceSummary: document.getElementById("rec-preference-summary"),
   recUpdated: document.getElementById("rec-updated"),
   homeSteps: document.getElementById("home-steps"),
@@ -794,6 +792,9 @@ function renderHome() {
   els.recTotal.textContent = formatYen(rec.totalYen);
   els.toggleReasonDetail.textContent = state.showDetailedReason ? "ひとことで見る" : "詳しく見る";
   els.recReason.textContent = state.showDetailedReason ? detailedReason : shortReason;
+  const crowdNote = state.recommendationPreferences.crowdNote?.trim() ?? "";
+  els.recCrowdNote.textContent = crowdNote;
+  els.recCrowdNoteCard.classList.toggle("is-hidden", !state.showDetailedReason || crowdNote.length === 0);
   els.recPreferenceSummary.textContent = recommendationPreferenceSummary(state.recommendationPreferences);
   els.recUpdated.textContent = state.weatherUpdatedAtEpochMs > 0
     ? `天気更新: ${formatDateTime(state.weatherUpdatedAtEpochMs)}`
