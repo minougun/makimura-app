@@ -285,6 +285,8 @@ state.historyMessage = "";
 state.historyMessageIsError = false;
 state.settingsMessage = "";
 state.settingsMessageIsError = false;
+state.crowdNoteMessage = "";
+state.crowdNoteMessageIsError = false;
 state.weatherMessage = "";
 state.weatherMessageIsError = false;
 state.weatherLoading = false;
@@ -341,7 +343,6 @@ const els = {
   toggleReasonDetail: document.getElementById("toggle-reason-detail"),
   recReason: document.getElementById("rec-reason"),
   recPreferenceSummary: document.getElementById("rec-preference-summary"),
-  crowdNote: document.getElementById("crowd-note"),
   recUpdated: document.getElementById("rec-updated"),
   homeSteps: document.getElementById("home-steps"),
   homeCalories: document.getElementById("home-calories"),
@@ -419,6 +420,8 @@ const els = {
   crowdNoteInput: document.getElementById("crowd-note-input"),
   saveRecommendationSettingsButton: document.getElementById("save-recommendation-settings"),
   recommendationSettingsMessage: document.getElementById("recommendation-settings-message"),
+  saveCrowdNoteButton: document.getElementById("save-crowd-note"),
+  crowdNoteMessage: document.getElementById("crowd-note-message"),
   persistOptIn: document.getElementById("persist-opt-in"),
   persistModeNote: document.getElementById("persist-mode-note"),
 
@@ -576,6 +579,10 @@ function bindEvents() {
 
   els.saveRecommendationSettingsButton.addEventListener("click", () => {
     saveRecommendationSettings();
+  });
+
+  els.saveCrowdNoteButton.addEventListener("click", () => {
+    saveCrowdNote();
   });
 
   els.persistOptIn.addEventListener("change", () => {
@@ -794,7 +801,6 @@ function renderHome() {
   els.toggleReasonDetail.textContent = state.showDetailedReason ? "詳しく見る: ON" : "ひとことで見る";
   els.recReason.textContent = state.showDetailedReason ? detailedReason : shortReason;
   els.recPreferenceSummary.textContent = recommendationPreferenceSummary(state.recommendationPreferences);
-  els.crowdNote.textContent = state.recommendationPreferences.crowdNote;
   els.recUpdated.textContent = state.weatherUpdatedAtEpochMs > 0
     ? `天気更新: ${formatDateTime(state.weatherUpdatedAtEpochMs)}`
     : "";
@@ -1143,9 +1149,11 @@ function renderSettingsFromState() {
   els.persistOptIn.checked = state.persistOptIn === true;
   runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(state.recommendationPreferences);
   renderRecommendationPreferenceChips();
-  els.crowdNoteInput.value = runtime.recommendationPreferencesDraft.crowdNote;
+  els.crowdNoteInput.value = state.recommendationPreferences.crowdNote;
   els.recommendationSettingsMessage.textContent = state.recommendationSettingsMessage;
   els.recommendationSettingsMessage.classList.toggle("error", state.recommendationSettingsMessageIsError === true);
+  els.crowdNoteMessage.textContent = state.crowdNoteMessage ?? "";
+  els.crowdNoteMessage.classList.toggle("error", state.crowdNoteMessageIsError === true);
   renderPersistenceModeNote();
 
   renderSettingsPreview();
@@ -1202,7 +1210,7 @@ function saveSettings() {
 function saveRecommendationSettings() {
   const nextPreferences = normalizeRecommendationPreferences({
     ...getRecommendationPreferencesDraft(),
-    crowdNote: els.crowdNoteInput.value,
+    crowdNote: state.recommendationPreferences.crowdNote,
   });
 
   state.recommendationPreferences = nextPreferences;
@@ -1213,6 +1221,19 @@ function saveRecommendationSettings() {
   renderHome();
   renderOrder();
   if (state.activitySubView === "history") renderHistory();
+  renderSettingsFromState();
+}
+
+function saveCrowdNote() {
+  state.recommendationPreferences = normalizeRecommendationPreferences({
+    ...state.recommendationPreferences,
+    crowdNote: els.crowdNoteInput.value,
+  });
+  runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(state.recommendationPreferences);
+  state.crowdNoteMessage = "混雑メモを保存しました。";
+  state.crowdNoteMessageIsError = false;
+  schedulePersist(true);
+  renderHome();
   renderSettingsFromState();
 }
 
@@ -1264,6 +1285,8 @@ function clearLocalData() {
   state.showDetailedReason = false;
   state.recommendationSettingsMessage = "";
   state.recommendationSettingsMessageIsError = false;
+  state.crowdNoteMessage = "";
+  state.crowdNoteMessageIsError = false;
   resetCadenceRuntime();
   runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences();
   runtime.recommendationCacheKey = "";

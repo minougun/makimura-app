@@ -311,6 +311,7 @@ private fun PedometerScreen() {
 
                     AppTab.SETTINGS -> SettingsTab(
                         profile = uiState.userProfile,
+                        recommendationPreferences = uiState.recommendationPreferences,
                         weatherContext = uiState.weatherContext,
                         weatherCity = uiState.weatherCity,
                         weatherUpdatedAtEpochMs = uiState.weatherUpdatedAtEpochMs,
@@ -971,6 +972,7 @@ private fun HistoryBarChart(days: List<DailyHistory>) {
 @Composable
 private fun SettingsTab(
     profile: UserProfile,
+    recommendationPreferences: RecommendationPreferences,
     weatherContext: WeatherContext,
     weatherCity: String,
     weatherUpdatedAtEpochMs: Long,
@@ -992,6 +994,8 @@ private fun SettingsTab(
     var weatherSaveMessage by remember { mutableStateOf<String?>(null) }
     var weatherMessageIsError by remember { mutableStateOf(false) }
     var persistenceSaveMessage by remember { mutableStateOf<String?>(null) }
+    var crowdNote by remember(recommendationPreferences) { mutableStateOf(recommendationPreferences.crowdNote) }
+    var crowdNoteSaveMessage by remember { mutableStateOf<String?>(null) }
 
     val previewProfile = remember(heightInput, weightInput, selectedSex, strideScale) {
         UserProfile(
@@ -1195,6 +1199,42 @@ private fun SettingsTab(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                Text("混雑メモ", style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    value = crowdNote,
+                    onValueChange = { value -> crowdNote = value.take(200) },
+                    label = { Text("混雑メモ") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "Google Maps の公式 API では Popular Times を直接取得できないため、ここでは手動メモで管理します。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Button(
+                    onClick = {
+                        MetricsRepository.updateRecommendationPreferences(
+                            recommendationPreferences.copy(crowdNote = crowdNote)
+                        )
+                        crowdNoteSaveMessage = "混雑メモを保存しました。"
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("混雑メモを保存")
+                }
+                crowdNoteSaveMessage?.let { message ->
+                    Text(message, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+
+        AppCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 Text("ラーメン提案の天候設定", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "店舗住所の天気をリアルタイム更新して、おすすめ提案に反映します。",
@@ -1386,10 +1426,12 @@ private fun SettingsTab(
                         selectedWeather = WeatherCondition.SUNNY
                         temperatureInput = WeatherContext().temperatureC.toString()
                         weatherCityInput = MakimuraShop.ADDRESS_LABEL
+                        crowdNote = RecommendationPreferences().crowdNote
                         saveMessage = null
                         weatherSaveMessage = null
                         weatherMessageIsError = false
                         persistenceSaveMessage = "保存データを削除しました。"
+                        crowdNoteSaveMessage = null
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -1648,10 +1690,6 @@ private fun RecommendationCard(
             RecommendationInfoPanel(
                 title = "反映中の条件",
                 body = recommendationPreferenceSummary(recommendationPreferences),
-            )
-            RecommendationInfoPanel(
-                title = "混雑メモ",
-                body = recommendationPreferences.crowdNote,
             )
             if (weatherUpdatedAtEpochMs > 0L) {
                 Text(

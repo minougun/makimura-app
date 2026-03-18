@@ -39,15 +39,9 @@
           <p class="muted" style="margin-top:12px">除外するトッピング</p>
           <div id="exclude-topping-chips" class="chip-group" style="margin-top:8px"></div>
 
-          <label class="field" style="margin-top:12px">
-            混雑メモ
-            <textarea id="crowd-note-input" rows="2"></textarea>
-          </label>
-
           <div class="button-row" style="margin-top:10px">
             <button id="save-recommendation-settings" class="btn primary" type="button">おすすめ設定を保存</button>
           </div>
-          <p class="muted" style="margin-top:8px">Google Maps の公式 API では Popular Times を直接取得できないため、ここでは手動メモで管理します。</p>
           <p id="recommendation-settings-message" class="message" aria-live="polite"></p>
         </article>
 
@@ -78,16 +72,10 @@
             <p class="detail-label">提案理由</p>
             <p id="rec-reason" class="recommendation-lead"></p>
           </section>
-          <div class="recommendation-note-grid">
-            <section class="recommendation-note-card">
-              <p class="detail-label">反映中の条件</p>
-              <p id="rec-preference-summary" class="muted"></p>
-            </section>
-            <section class="recommendation-note-card">
-              <p class="detail-label">混雑メモ</p>
-              <p id="crowd-note" class="muted"></p>
-            </section>
-          </div>
+          <section class="recommendation-note-card" style="margin-top:10px">
+            <p class="detail-label">反映中の条件</p>
+            <p id="rec-preference-summary" class="muted"></p>
+          </section>
           <p id="rec-updated" class="detail-meta"></p>
         </article>
 
@@ -294,6 +282,19 @@
             <button id="save-settings" class="btn primary" type="button">設定を保存</button>
           </div>
           <p id="settings-message" class="message" aria-live="polite"></p>
+        </article>
+
+        <article class="card">
+          <h2>混雑メモ</h2>
+          <label class="field">
+            混雑メモ
+            <textarea id="crowd-note-input" rows="2"></textarea>
+          </label>
+          <div class="button-row" style="margin-top:10px">
+            <button id="save-crowd-note" class="btn primary" type="button">混雑メモを保存</button>
+          </div>
+          <p class="muted" style="margin-top:8px">Google Maps の公式 API では Popular Times を直接取得できないため、ここでは手動メモで管理します。</p>
+          <p id="crowd-note-message" class="message" aria-live="polite"></p>
         </article>
 
         <article class="card">
