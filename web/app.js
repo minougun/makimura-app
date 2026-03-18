@@ -1,5 +1,8 @@
 // ===== Constants =====
-const STORAGE_KEY = "makimura_app_state_v1";
+const LEGACY_STORAGE_KEY = "makimura_app_state_v1";
+const SESSION_STORAGE_KEY = "makimura_app_state_session_v2";
+const LOCAL_STORAGE_KEY = "makimura_app_state_local_v2";
+const PERSIST_PREFERENCE_KEY = "makimura_app_persist_opt_in_v1";
 const MS_PER_DAY = 86_400_000;
 const HISTORY_LIMIT = 365;
 const WEATHER_REFRESH_MS = 3 * 60 * 60 * 1_000;
@@ -153,6 +156,11 @@ state.weatherMessage = "";
 state.weatherMessageIsError = false;
 state.weatherLoading = false;
 
+if (state.pendingStorageMigration) {
+  persistState();
+  state.pendingStorageMigration = false;
+}
+
 const runtime = {
   motionListener: null,
   startInProgress: false,
@@ -251,6 +259,8 @@ const els = {
   recalcScaleButton: document.getElementById("recalc-scale"),
   saveSettingsButton: document.getElementById("save-settings"),
   settingsMessage: document.getElementById("settings-message"),
+  persistOptIn: document.getElementById("persist-opt-in"),
+  persistModeNote: document.getElementById("persist-mode-note"),
 
   // Settings - weather
   fetchWeatherButton: document.getElementById("fetch-weather"),
@@ -396,6 +406,10 @@ function bindEvents() {
 
   els.saveSettingsButton.addEventListener("click", () => {
     saveSettings();
+  });
+
+  els.persistOptIn.addEventListener("change", () => {
+    updatePersistencePreference(els.persistOptIn.checked);
   });
 
   // Settings - weather chips
@@ -758,6 +772,9 @@ function renderSettingsFromState() {
     ? `最終更新: ${formatDateTime(state.weatherUpdatedAtEpochMs)}`
     : "";
 
+  els.persistOptIn.checked = state.persistOptIn === true;
+  renderPersistenceModeNote();
+
   renderSettingsPreview();
   setSettingsMessage(state.settingsMessage, state.settingsMessageIsError);
 }
@@ -809,6 +826,20 @@ function saveSettings() {
   renderSettingsPreview();
 }
 
+function updatePersistencePreference(enabled) {
+  const nextValue = enabled === true;
+  state.persistOptIn = nextValue;
+  writePersistPreference(nextValue);
+  schedulePersist(true);
+  renderPersistenceModeNote();
+  setSettingsMessage(
+    nextValue
+      ? "この端末への保存を有効にしました。共有端末ではオフを推奨します。"
+      : "この端末への永続保存を無効にしました。以後はこのタブ内だけ保持します。",
+    false
+  );
+}
+
 function saveWeatherManually() {
   const activeChip = document.querySelector(".chip.is-active[data-weather]");
   const condition = activeChip?.dataset.weather ?? "SUNNY";
@@ -837,13 +868,11 @@ function clearLocalData() {
   state.weatherContext = { condition: "SUNNY", temperatureC: 20 };
   state.weatherUpdatedAtEpochMs = 0;
   state.sensorSupported = true;
+  state.persistOptIn = false;
   resetCadenceRuntime();
 
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (_error) {
-    // ignore
-  }
+  clearStoredState();
+  writePersistPreference(false);
 
   setHistoryMessage("", false);
   setTodayMessage("");
@@ -877,7 +906,8 @@ async function fetchWeatherNow() {
 
     renderHome();
   } catch (error) {
-    setWeatherMessage(`自動取得に失敗しました: ${error.message ?? "unknown"}`, true);
+    console.warn("weather fetch failed", error);
+    setWeatherMessage("自動取得に失敗しました。時間をおいて再試行してください。", true);
   } finally {
     state.weatherLoading = false;
     els.fetchWeatherButton.disabled = false;
@@ -1435,16 +1465,22 @@ function loadState() {
     weatherContext: { condition: "SUNNY", temperatureC: 20 },
     weatherUpdatedAtEpochMs: 0,
     orderSelectedNames: [],
+    persistOptIn: false,
+    pendingStorageMigration: false,
     isTracking: false,
     sensorSupported: true,
   };
 
-  let parsed = null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    parsed = raw ? JSON.parse(raw) : null;
-  } catch (_error) {
-    parsed = null;
+  const persistOptIn = readPersistPreference();
+  let parsed = readStoredState(persistOptIn);
+  let pendingStorageMigration = false;
+
+  if (parsed == null) {
+    parsed = readLegacyStoredState();
+    if (parsed != null) {
+      pendingStorageMigration = true;
+      clearLegacyStoredState();
+    }
   }
 
   if (!parsed || typeof parsed !== "object") return fallback;
@@ -1465,6 +1501,8 @@ function loadState() {
     orderSelectedNames: Array.isArray(parsed.orderSelectedNames)
       ? parsed.orderSelectedNames.filter((n) => typeof n === "string" && PRICE_TABLE[n] != null)
       : [],
+    persistOptIn,
+    pendingStorageMigration,
     isTracking: false,
     sensorSupported: true,
   };
@@ -1501,7 +1539,7 @@ function schedulePersist(immediate = false) {
 
 function persistState() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    const serializedState = JSON.stringify({
       profile: state.profile,
       metrics: state.metrics,
       history: state.history,
@@ -1509,9 +1547,17 @@ function persistState() {
       weatherContext: state.weatherContext,
       weatherUpdatedAtEpochMs: state.weatherUpdatedAtEpochMs,
       orderSelectedNames: state.orderSelectedNames,
-    }));
+    });
+    const activeStorage = getActiveStateStorage(state.persistOptIn);
+    const inactiveStorage = getInactiveStateStorage(state.persistOptIn);
+    const activeKey = getActiveStateKey(state.persistOptIn);
+    const inactiveKey = getInactiveStateKey(state.persistOptIn);
+
+    activeStorage?.setItem(activeKey, serializedState);
+    inactiveStorage?.removeItem(inactiveKey);
+    clearLegacyStoredState();
   } catch (_error) {
-    setTodayMessage("ローカル保存に失敗しました。ブラウザ容量を確認してください。", true);
+    setTodayMessage("データ保存に失敗しました。ブラウザ容量またはプライベートモードを確認してください。", true);
   }
 }
 
@@ -1800,8 +1846,116 @@ async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   if (!window.isSecureContext) return;
   try {
-    await navigator.serviceWorker.register("./sw.js", { scope: "./" });
+    let controllerChanged = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (controllerChanged) return;
+      controllerChanged = true;
+      window.location.reload();
+    });
+
+    const registration = await navigator.serviceWorker.register("./sw.js", { scope: "./" });
+
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
+
+    registration.addEventListener("updatefound", () => {
+      const installingWorker = registration.installing;
+      if (!installingWorker) return;
+
+      installingWorker.addEventListener("statechange", () => {
+        if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+          installingWorker.postMessage({ type: "SKIP_WAITING" });
+        }
+      });
+    });
+
+    void registration.update();
   } catch (_error) {
     // Silent fail
   }
+}
+
+function renderPersistenceModeNote() {
+  if (!els.persistModeNote) return;
+  els.persistModeNote.textContent = state.persistOptIn
+    ? "永続保存: ON。設定と履歴をこの端末のブラウザに保存します。"
+    : "永続保存: OFF。このタブを閉じると設定と履歴を破棄します。";
+}
+
+function readPersistPreference() {
+  try {
+    return window.localStorage.getItem(PERSIST_PREFERENCE_KEY) === "1";
+  } catch (_error) {
+    return false;
+  }
+}
+
+function writePersistPreference(enabled) {
+  try {
+    if (enabled) {
+      window.localStorage.setItem(PERSIST_PREFERENCE_KEY, "1");
+    } else {
+      window.localStorage.removeItem(PERSIST_PREFERENCE_KEY);
+    }
+  } catch (_error) {
+    // ignore
+  }
+}
+
+function readStoredState(persistOptIn) {
+  const storage = getActiveStateStorage(persistOptIn);
+  const key = getActiveStateKey(persistOptIn);
+  return readJsonFromStorage(storage, key);
+}
+
+function readLegacyStoredState() {
+  return readJsonFromStorage(window.localStorage, LEGACY_STORAGE_KEY);
+}
+
+function readJsonFromStorage(storage, key) {
+  try {
+    const raw = storage?.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function clearStoredState() {
+  try {
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch (_error) {
+    // ignore
+  }
+  try {
+    window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+  } catch (_error) {
+    // ignore
+  }
+  clearLegacyStoredState();
+}
+
+function clearLegacyStoredState() {
+  try {
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch (_error) {
+    // ignore
+  }
+}
+
+function getActiveStateStorage(persistOptIn) {
+  return persistOptIn ? window.localStorage : window.sessionStorage;
+}
+
+function getInactiveStateStorage(persistOptIn) {
+  return persistOptIn ? window.sessionStorage : window.localStorage;
+}
+
+function getActiveStateKey(persistOptIn) {
+  return persistOptIn ? LOCAL_STORAGE_KEY : SESSION_STORAGE_KEY;
+}
+
+function getInactiveStateKey(persistOptIn) {
+  return persistOptIn ? SESSION_STORAGE_KEY : LOCAL_STORAGE_KEY;
 }
