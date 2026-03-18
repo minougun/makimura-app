@@ -1212,6 +1212,7 @@ function saveCrowdNote() {
 function applyRecommendationPreferences(nextPreferences) {
   state.recommendationPreferences = normalizeRecommendationPreferences(nextPreferences);
   schedulePersist(true);
+  renderRecommendationPreferenceChips();
   renderHome();
   renderOrder();
   if (state.activitySubView === "history") renderHistory();
