@@ -46,7 +46,12 @@
           <div class="metric-row total-row">
             <span>合計</span><span id="rec-total">¥0</span>
           </div>
+          <div class="button-row" style="margin-top:8px">
+            <button id="toggle-reason-detail" class="btn" type="button">ひとことで見る</button>
+          </div>
           <p id="rec-reason" class="muted"></p>
+          <p id="shop-hours-note" class="muted"></p>
+          <p id="crowd-note" class="muted"></p>
           <p id="rec-updated" class="muted"></p>
         </article>
 
@@ -68,6 +73,20 @@
           <div id="current-order" class="metric-list"></div>
           <div class="metric-row total-row">
             <span>合計</span><span id="order-total">¥600</span>
+          </div>
+        </article>
+
+        <article id="order-diff-card" class="card">
+          <h3>おすすめとの差分</h3>
+          <div class="field-grid">
+            <div>
+              <p class="muted">追加した項目</p>
+              <ul id="order-diff-added" class="highlight-list compact"></ul>
+            </div>
+            <div>
+              <p class="muted">外した項目</p>
+              <ul id="order-diff-removed" class="highlight-list compact"></ul>
+            </div>
           </div>
         </article>
 
@@ -177,6 +196,11 @@
               </table>
             </div>
           </article>
+
+          <article class="card">
+            <h3>おすすめ履歴</h3>
+            <div id="recommendation-history-list" class="metric-list"></div>
+          </article>
         </div>
       </section>
 
@@ -229,6 +253,35 @@
             <button id="save-settings" class="btn primary" type="button">設定を保存</button>
           </div>
           <p id="settings-message" class="message" aria-live="polite"></p>
+        </article>
+
+        <article class="card">
+          <h2>おすすめの好み設定</h2>
+          <p class="muted">苦手なトッピングや今の気分をおすすめに反映します。</p>
+          <p class="muted" style="margin-top:8px">除外するトッピング</p>
+          <div id="exclude-topping-chips" class="chip-group" style="margin-top:8px"></div>
+
+          <p class="muted" style="margin-top:12px">空腹度</p>
+          <div id="appetite-chips" class="chip-group" style="margin-top:8px"></div>
+
+          <p class="muted" style="margin-top:12px">気分</p>
+          <div id="mood-chips" class="chip-group" style="margin-top:8px"></div>
+
+          <label class="field" style="margin-top:12px">
+            営業時間メモ
+            <textarea id="shop-hours-note-input" rows="2"></textarea>
+          </label>
+
+          <label class="field" style="margin-top:12px">
+            混雑メモ
+            <textarea id="crowd-note-input" rows="2"></textarea>
+          </label>
+
+          <div class="button-row" style="margin-top:10px">
+            <button id="save-recommendation-settings" class="btn primary" type="button">おすすめ設定を保存</button>
+          </div>
+          <p class="muted" style="margin-top:8px">Google Maps の公式 API では Popular Times を直接取得できないため、ここでは手動メモで管理します。</p>
+          <p id="recommendation-settings-message" class="message" aria-live="polite"></p>
         </article>
 
         <article class="card">

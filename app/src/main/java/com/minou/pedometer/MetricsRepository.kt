@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 
 object MetricsRepository {
     private const val PREFS_NAME = "pedometer_metrics"
@@ -45,6 +47,12 @@ object MetricsRepository {
     private const val KEY_WEATHER_TEMPERATURE = "weather_temperature_c"
     private const val KEY_WEATHER_CITY = "weather_city"
     private const val KEY_WEATHER_UPDATED_AT = "weather_updated_at"
+    private const val KEY_RECOMMENDATION_EXCLUDED_TOPPINGS = "recommendation_excluded_toppings"
+    private const val KEY_RECOMMENDATION_APPETITE = "recommendation_appetite"
+    private const val KEY_RECOMMENDATION_MOOD = "recommendation_mood"
+    private const val KEY_RECOMMENDATION_HOURS_NOTE = "recommendation_hours_note"
+    private const val KEY_RECOMMENDATION_CROWD_NOTE = "recommendation_crowd_note"
+    private const val KEY_RECOMMENDATION_HISTORY = "recommendation_history_json"
 
     private const val KEY_PENDING_ARCHIVE_DAY = "pending_archive_day"
     private const val KEY_PENDING_ARCHIVE_STEPS = "pending_archive_steps"
@@ -91,10 +99,16 @@ object MetricsRepository {
         }
 
         val profile = if (persistenceEnabled) loadUserProfileFromDisk() else UserProfile()
+        val recommendationPreferences = if (persistenceEnabled) {
+            loadRecommendationPreferencesFromDisk()
+        } else {
+            RecommendationPreferences()
+        }
         val weatherContext = if (persistenceEnabled) loadWeatherContextFromDisk() else WeatherContext()
         val metrics = if (persistenceEnabled) loadMetricsFromDisk() else TodayMetrics(dayEpoch = currentDayEpoch())
         val weatherUpdatedAt = if (persistenceEnabled) prefs.getLong(KEY_WEATHER_UPDATED_AT, 0L) else 0L
         val weatherCity = if (persistenceEnabled) loadWeatherCityFromDisk() else MakimuraShop.ADDRESS_LABEL
+        val recommendationHistory = if (persistenceEnabled) loadRecommendationHistoryFromDisk() else emptyList()
         val isTracking = if (persistenceEnabled) prefs.getBoolean(KEY_IS_TRACKING, false) else false
         val sensorSupported = if (persistenceEnabled) prefs.getBoolean(KEY_SENSOR_SUPPORTED, true) else true
 
@@ -116,6 +130,8 @@ object MetricsRepository {
             metrics = metrics,
             history = inMemoryHistory,
             userProfile = profile,
+            recommendationHistory = recommendationHistory,
+            recommendationPreferences = recommendationPreferences,
             weatherContext = weatherContext,
             weatherCity = weatherCity,
             weatherUpdatedAtEpochMs = weatherUpdatedAt,
@@ -304,6 +320,44 @@ object MetricsRepository {
         _uiState.update { it.copy(weatherCity = normalized) }
     }
 
+    fun updateRecommendationPreferences(preferences: RecommendationPreferences) {
+        ensureInitialized()
+
+        val normalized = preferences.copy(
+            excludedToppings = preferences.excludedToppings.intersect(RamenMenuCatalog.toppingItemNames),
+            shopHoursNote = preferences.normalizedShopHoursNote,
+            crowdNote = preferences.normalizedCrowdNote,
+        )
+        if (_uiState.value.recommendationPreferences == normalized) return
+
+        if (persistenceEnabled) {
+            prefs.edit()
+                .putStringSet(KEY_RECOMMENDATION_EXCLUDED_TOPPINGS, normalized.excludedToppings)
+                .putString(KEY_RECOMMENDATION_APPETITE, normalized.appetiteLevel.name)
+                .putString(KEY_RECOMMENDATION_MOOD, normalized.moodPreference.name)
+                .putString(KEY_RECOMMENDATION_HOURS_NOTE, normalized.shopHoursNote)
+                .putString(KEY_RECOMMENDATION_CROWD_NOTE, normalized.crowdNote)
+                .apply()
+        }
+
+        _uiState.update { it.copy(recommendationPreferences = normalized) }
+    }
+
+    fun recordRecommendationHistory(entry: RecommendationHistoryEntry) {
+        ensureInitialized()
+
+        val updated = upsertRecommendationHistory(_uiState.value.recommendationHistory, entry, 20)
+        if (updated == _uiState.value.recommendationHistory) return
+
+        if (persistenceEnabled) {
+            prefs.edit()
+                .putString(KEY_RECOMMENDATION_HISTORY, recommendationHistoryToJson(updated))
+                .apply()
+        }
+
+        _uiState.update { it.copy(recommendationHistory = updated) }
+    }
+
     fun setPersistenceEnabled(enabled: Boolean) {
         ensureInitialized()
         if (persistenceEnabled == enabled) return
@@ -339,6 +393,8 @@ object MetricsRepository {
             weatherContext = WeatherContext(),
             weatherCity = MakimuraShop.ADDRESS_LABEL,
             weatherUpdatedAtEpochMs = 0L,
+            recommendationPreferences = RecommendationPreferences(),
+            recommendationHistory = emptyList(),
             isTracking = false,
             sensorSupported = true,
             persistenceEnabled = false,
@@ -485,6 +541,75 @@ object MetricsRepository {
             ?: MakimuraShop.ADDRESS_LABEL
     }
 
+    private fun loadRecommendationPreferencesFromDisk(): RecommendationPreferences {
+        val excludedToppings = prefs.getStringSet(KEY_RECOMMENDATION_EXCLUDED_TOPPINGS, emptySet()).orEmpty()
+            .intersect(RamenMenuCatalog.toppingItemNames)
+        val appetiteLevel = runCatching {
+            AppetiteLevel.valueOf(
+                prefs.getString(KEY_RECOMMENDATION_APPETITE, AppetiteLevel.NORMAL.name) ?: AppetiteLevel.NORMAL.name
+            )
+        }.getOrElse { AppetiteLevel.NORMAL }
+        val moodPreference = runCatching {
+            MoodPreference.valueOf(
+                prefs.getString(KEY_RECOMMENDATION_MOOD, MoodPreference.ANY.name) ?: MoodPreference.ANY.name
+            )
+        }.getOrElse { MoodPreference.ANY }
+
+        return RecommendationPreferences(
+            excludedToppings = excludedToppings,
+            appetiteLevel = appetiteLevel,
+            moodPreference = moodPreference,
+            shopHoursNote = prefs.getString(KEY_RECOMMENDATION_HOURS_NOTE, MakimuraShop.DEFAULT_HOURS_NOTE)
+                ?.trim()
+                ?.ifBlank { MakimuraShop.DEFAULT_HOURS_NOTE }
+                ?.take(200)
+                ?: MakimuraShop.DEFAULT_HOURS_NOTE,
+            crowdNote = prefs.getString(KEY_RECOMMENDATION_CROWD_NOTE, MakimuraShop.DEFAULT_CROWD_NOTE)
+                ?.trim()
+                ?.ifBlank { MakimuraShop.DEFAULT_CROWD_NOTE }
+                ?.take(200)
+                ?: MakimuraShop.DEFAULT_CROWD_NOTE,
+        )
+    }
+
+    private fun loadRecommendationHistoryFromDisk(): List<RecommendationHistoryEntry> {
+        val raw = prefs.getString(KEY_RECOMMENDATION_HISTORY, null) ?: return emptyList()
+        return runCatching {
+            val root = JSONArray(raw)
+            buildList {
+                for (index in 0 until root.length()) {
+                    val row = root.optJSONObject(index) ?: continue
+                    val tier = runCatching {
+                        RecommendationTier.valueOf(row.optString("tier", RecommendationTier.LIGHT.name))
+                    }.getOrElse { RecommendationTier.LIGHT }
+                    val weatherCondition = runCatching {
+                        WeatherCondition.valueOf(row.optString("weatherCondition", WeatherCondition.SUNNY.name))
+                    }.getOrElse { WeatherCondition.SUNNY }
+                    val items = row.optJSONArray("itemNames") ?: JSONArray()
+                    add(
+                        RecommendationHistoryEntry(
+                            createdAtEpochMs = row.optLong("createdAtEpochMs", 0L),
+                            dayEpoch = row.optLong("dayEpoch", currentDayEpoch()),
+                            tier = tier,
+                            steps = row.optInt("steps", 0).coerceAtLeast(0),
+                            weatherCondition = weatherCondition,
+                            temperatureC = row.optInt("temperatureC", 20).coerceIn(-20, 45),
+                            itemNames = buildList {
+                                for (itemIndex in 0 until items.length()) {
+                                    val name = items.optString(itemIndex).trim()
+                                    if (name.isNotEmpty()) add(name)
+                                }
+                            },
+                            totalYen = row.optInt("totalYen", 0).coerceAtLeast(0),
+                            reason = row.optString("reason").trim().take(300),
+                            signature = row.optString("signature").trim(),
+                        )
+                    )
+                }
+            }.sortedByDescending { it.createdAtEpochMs }.take(20)
+        }.getOrElse { emptyList() }
+    }
+
     private fun archiveSafelyIfNeeded(metrics: TodayMetrics) {
         if (!metrics.hasActivity()) return
 
@@ -628,6 +753,12 @@ object MetricsRepository {
             .putInt(KEY_WEATHER_TEMPERATURE, state.weatherContext.normalizedTemperatureC)
             .putString(KEY_WEATHER_CITY, state.weatherCity.trim().ifBlank { MakimuraShop.ADDRESS_LABEL }.take(120))
             .putLong(KEY_WEATHER_UPDATED_AT, state.weatherUpdatedAtEpochMs)
+            .putStringSet(KEY_RECOMMENDATION_EXCLUDED_TOPPINGS, state.recommendationPreferences.excludedToppings)
+            .putString(KEY_RECOMMENDATION_APPETITE, state.recommendationPreferences.appetiteLevel.name)
+            .putString(KEY_RECOMMENDATION_MOOD, state.recommendationPreferences.moodPreference.name)
+            .putString(KEY_RECOMMENDATION_HOURS_NOTE, state.recommendationPreferences.normalizedShopHoursNote)
+            .putString(KEY_RECOMMENDATION_CROWD_NOTE, state.recommendationPreferences.normalizedCrowdNote)
+            .putString(KEY_RECOMMENDATION_HISTORY, recommendationHistoryToJson(state.recommendationHistory))
 
         val normalizedWeightKg = state.userProfile.normalizedWeightKg
         if (normalizedWeightKg == null) {
@@ -681,6 +812,12 @@ object MetricsRepository {
             .remove(KEY_WEATHER_TEMPERATURE)
             .remove(KEY_WEATHER_CITY)
             .remove(KEY_WEATHER_UPDATED_AT)
+            .remove(KEY_RECOMMENDATION_EXCLUDED_TOPPINGS)
+            .remove(KEY_RECOMMENDATION_APPETITE)
+            .remove(KEY_RECOMMENDATION_MOOD)
+            .remove(KEY_RECOMMENDATION_HOURS_NOTE)
+            .remove(KEY_RECOMMENDATION_CROWD_NOTE)
+            .remove(KEY_RECOMMENDATION_HISTORY)
             .remove(KEY_PENDING_ARCHIVE_DAY)
             .remove(KEY_PENDING_ARCHIVE_STEPS)
             .remove(KEY_PENDING_ARCHIVE_TOTAL_DISTANCE)
@@ -711,4 +848,37 @@ internal fun upsertRecentHistory(
     return (listOf(day) + history.filterNot { it.dayEpoch == day.dayEpoch })
         .sortedByDescending { it.dayEpoch }
         .take(limit)
+}
+
+internal fun upsertRecommendationHistory(
+    history: List<RecommendationHistoryEntry>,
+    entry: RecommendationHistoryEntry,
+    limit: Int,
+): List<RecommendationHistoryEntry> {
+    val currentTop = history.firstOrNull()
+    if (currentTop?.signature == entry.signature) return history
+
+    return (listOf(entry) + history.filterNot { it.signature == entry.signature })
+        .sortedByDescending { it.createdAtEpochMs }
+        .take(limit)
+}
+
+private fun recommendationHistoryToJson(history: List<RecommendationHistoryEntry>): String {
+    val rows = JSONArray()
+    history.forEach { entry ->
+        rows.put(
+            JSONObject()
+                .put("createdAtEpochMs", entry.createdAtEpochMs)
+                .put("dayEpoch", entry.dayEpoch)
+                .put("tier", entry.tier.name)
+                .put("steps", entry.steps)
+                .put("weatherCondition", entry.weatherCondition.name)
+                .put("temperatureC", entry.temperatureC)
+                .put("itemNames", JSONArray(entry.itemNames))
+                .put("totalYen", entry.totalYen)
+                .put("reason", entry.reason)
+                .put("signature", entry.signature)
+        )
+    }
+    return rows.toString()
 }

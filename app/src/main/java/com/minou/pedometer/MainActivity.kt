@@ -150,8 +150,13 @@ private fun PedometerScreen() {
         uiState.metrics.steps,
         uiState.weatherContext.condition,
         uiState.weatherContext.temperatureC,
+        uiState.recommendationPreferences,
     ) {
-        RamenRecommendationEngine.recommend(uiState.metrics, uiState.weatherContext)
+        RamenRecommendationEngine.recommend(
+            metrics = uiState.metrics,
+            weatherContext = uiState.weatherContext,
+            preferences = uiState.recommendationPreferences,
+        )
     }
 
     val permissions = remember { requiredPermissions() }
@@ -200,6 +205,28 @@ private fun PedometerScreen() {
                 delay(60_000L)
             }
         }
+    }
+
+    LaunchedEffect(recommendation, uiState.metrics.dayEpoch) {
+        MetricsRepository.recordRecommendationHistory(
+            RecommendationHistoryEntry(
+                createdAtEpochMs = System.currentTimeMillis(),
+                dayEpoch = uiState.metrics.dayEpoch,
+                tier = recommendation.tier,
+                steps = uiState.metrics.steps,
+                weatherCondition = uiState.weatherContext.condition,
+                temperatureC = uiState.weatherContext.temperatureC,
+                itemNames = recommendation.items.map { it.name },
+                totalYen = recommendation.totalYen,
+                reason = recommendation.reason.take(300),
+                signature = RamenRecommendationEngine.signature(
+                    metrics = uiState.metrics,
+                    weatherContext = uiState.weatherContext,
+                    preferences = uiState.recommendationPreferences,
+                    recommendation = recommendation,
+                ),
+            )
+        )
     }
 
     Box(
@@ -262,6 +289,7 @@ private fun PedometerScreen() {
 
                     AppTab.ORDER -> OrderTab(
                         recommendation = recommendation,
+                        recommendationPreferences = uiState.recommendationPreferences,
                         selectedItemNames = selectedOrderItems.toSet(),
                         onSelectedItemNamesChange = { names ->
                             selectedOrderItems = names.toList()
@@ -283,6 +311,7 @@ private fun PedometerScreen() {
 
                     AppTab.SETTINGS -> SettingsTab(
                         profile = uiState.userProfile,
+                        recommendationPreferences = uiState.recommendationPreferences,
                         weatherContext = uiState.weatherContext,
                         weatherCity = uiState.weatherCity,
                         weatherUpdatedAtEpochMs = uiState.weatherUpdatedAtEpochMs,
@@ -351,6 +380,7 @@ private fun HomeTabContent(
         RecommendationCard(
             weatherContext = uiState.weatherContext,
             recommendation = recommendation,
+            recommendationPreferences = uiState.recommendationPreferences,
             weatherCity = uiState.weatherCity,
             weatherUpdatedAtEpochMs = uiState.weatherUpdatedAtEpochMs,
         )
@@ -377,6 +407,7 @@ private fun HomeTabContent(
 @Composable
 private fun OrderTab(
     recommendation: RamenRecommendation,
+    recommendationPreferences: RecommendationPreferences,
     selectedItemNames: Set<String>,
     onSelectedItemNamesChange: (Set<String>) -> Unit,
 ) {
@@ -388,6 +419,15 @@ private fun OrderTab(
     }
     val totalYen = remember(normalizedSelection) {
         normalizedSelection.sumOf { name -> RamenMenuCatalog.priceTable[name] ?: 0 }
+    }
+    val recommendedSelection = remember(recommendation) {
+        recommendation.items.map { it.name }.toSet() + RamenMenuCatalog.requiredItemNames
+    }
+    val addedItems = remember(normalizedSelection, recommendedSelection) {
+        normalizedSelection.subtract(recommendedSelection).subtract(RamenMenuCatalog.requiredItemNames).sorted()
+    }
+    val removedItems = remember(normalizedSelection, recommendedSelection) {
+        recommendedSelection.subtract(normalizedSelection).subtract(RamenMenuCatalog.requiredItemNames).sorted()
     }
 
     Column(
@@ -406,12 +446,15 @@ private fun OrderTab(
                     "ラーメンは必須で選択済み。好みでトッピング・ご飯・ドリンクを追加できます。",
                     style = MaterialTheme.typography.bodySmall,
                 )
+                if (recommendationPreferences.excludedToppings.isNotEmpty()) {
+                    Text(
+                        "除外中: ${recommendationPreferences.excludedToppings.sorted().joinToString(" / ")}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 Button(
-                    onClick = {
-                        onSelectedItemNamesChange(
-                            recommendation.items.map { it.name }.toSet() + RamenMenuCatalog.requiredItemNames
-                        )
-                    },
+                    onClick = { onSelectedItemNamesChange(recommendedSelection) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("今日のおすすめセットを適用")
@@ -468,6 +511,25 @@ private fun OrderTab(
                 MetricRow("合計", formatYen(totalYen))
             }
         }
+
+        if (addedItems.isNotEmpty() || removedItems.isNotEmpty()) {
+            AppCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("おすすめとの差分", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    if (addedItems.isNotEmpty()) {
+                        Text("追加した項目", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        addedItems.forEach { name -> Text("・$name", style = MaterialTheme.typography.bodyMedium) }
+                    }
+                    if (removedItems.isNotEmpty()) {
+                        Text("外した項目", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        removedItems.forEach { name -> Text("・$name", style = MaterialTheme.typography.bodyMedium) }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -493,7 +555,10 @@ private fun ActivityTab(
             ) {
                 Text("運動ダッシュボードに戻る")
             }
-            HistoryTab(history = uiState.history)
+            HistoryTab(
+                history = uiState.history,
+                recommendationHistory = uiState.recommendationHistory,
+            )
         }
         return
     }
@@ -547,7 +612,10 @@ private fun ActivityTab(
 }
 
 @Composable
-private fun HistoryTab(history: List<DailyHistory>) {
+private fun HistoryTab(
+    history: List<DailyHistory>,
+    recommendationHistory: List<RecommendationHistoryEntry>,
+) {
     val context = LocalContext.current
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var lastExportedFilePath by rememberSaveable { mutableStateOf<String?>(null) }
@@ -616,6 +684,7 @@ private fun HistoryTab(history: List<DailyHistory>) {
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+            RecommendationHistoryCard(history = recommendationHistory)
         }
         return
     }
@@ -806,6 +875,33 @@ private fun HistoryTab(history: List<DailyHistory>) {
                 }
             }
         }
+
+        RecommendationHistoryCard(history = recommendationHistory)
+    }
+}
+
+@Composable
+private fun RecommendationHistoryCard(history: List<RecommendationHistoryEntry>) {
+    AppCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("おすすめ履歴", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            if (history.isEmpty()) {
+                Text("おすすめ履歴はまだありません。", style = MaterialTheme.typography.bodySmall)
+                return@Column
+            }
+
+            history.take(10).forEach { entry ->
+                Text(
+                    "${formatDateTime(entry.createdAtEpochMs)} / ${recommendationTierLabel(entry.tier)} / ${formatYen(entry.totalYen)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(entry.itemNames.joinToString(" / "), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 }
 
@@ -843,6 +939,7 @@ private fun HistoryBarChart(days: List<DailyHistory>) {
 @Composable
 private fun SettingsTab(
     profile: UserProfile,
+    recommendationPreferences: RecommendationPreferences,
     weatherContext: WeatherContext,
     weatherCity: String,
     weatherUpdatedAtEpochMs: Long,
@@ -864,6 +961,18 @@ private fun SettingsTab(
     var weatherSaveMessage by remember { mutableStateOf<String?>(null) }
     var weatherMessageIsError by remember { mutableStateOf(false) }
     var persistenceSaveMessage by remember { mutableStateOf<String?>(null) }
+    var selectedAppetite by remember(recommendationPreferences) { mutableStateOf(recommendationPreferences.appetiteLevel) }
+    var selectedMood by remember(recommendationPreferences) { mutableStateOf(recommendationPreferences.moodPreference) }
+    var excludedToppings by remember(recommendationPreferences) {
+        mutableStateOf(recommendationPreferences.excludedToppings)
+    }
+    var shopHoursNote by remember(recommendationPreferences) {
+        mutableStateOf(recommendationPreferences.shopHoursNote)
+    }
+    var crowdNote by remember(recommendationPreferences) {
+        mutableStateOf(recommendationPreferences.crowdNote)
+    }
+    var recommendationSaveMessage by remember { mutableStateOf<String?>(null) }
 
     val previewProfile = remember(heightInput, weightInput, selectedSex, strideScale) {
         UserProfile(
@@ -1067,6 +1176,99 @@ private fun SettingsTab(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                Text("おすすめの好み設定", style = MaterialTheme.typography.titleMedium)
+                Text("苦手なトッピングや今の気分をおすすめに反映します。", style = MaterialTheme.typography.bodySmall)
+
+                Text("除外するトッピング", style = MaterialTheme.typography.titleSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("ねぎ", "ニンニク", "コーン", "煮卵", "メンマ", "キムチ", "納豆").forEach { name ->
+                        FilterChip(
+                            selected = excludedToppings.contains(name),
+                            onClick = {
+                                excludedToppings = if (excludedToppings.contains(name)) {
+                                    excludedToppings - name
+                                } else {
+                                    excludedToppings + name
+                                }
+                            },
+                            label = { Text(name) },
+                        )
+                    }
+                }
+
+                Text("空腹度", style = MaterialTheme.typography.titleSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AppetiteLevel.entries.forEach { level ->
+                        FilterChip(
+                            selected = selectedAppetite == level,
+                            onClick = { selectedAppetite = level },
+                            label = { Text(appetiteLabel(level)) },
+                        )
+                    }
+                }
+
+                Text("気分", style = MaterialTheme.typography.titleSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MoodPreference.entries.forEach { mood ->
+                        FilterChip(
+                            selected = selectedMood == mood,
+                            onClick = { selectedMood = mood },
+                            label = { Text(moodLabel(mood)) },
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = shopHoursNote,
+                    onValueChange = { value -> shopHoursNote = value.take(200) },
+                    label = { Text("営業時間メモ") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                OutlinedTextField(
+                    value = crowdNote,
+                    onValueChange = { value -> crowdNote = value.take(200) },
+                    label = { Text("混雑メモ") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Text(
+                    "Google Maps の公式 API では Popular Times を直接取得できないため、ここでは手動メモで管理します。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+
+                Button(
+                    onClick = {
+                        MetricsRepository.updateRecommendationPreferences(
+                            RecommendationPreferences(
+                                excludedToppings = excludedToppings,
+                                appetiteLevel = selectedAppetite,
+                                moodPreference = selectedMood,
+                                shopHoursNote = shopHoursNote,
+                                crowdNote = crowdNote,
+                            )
+                        )
+                        recommendationSaveMessage = "おすすめの好み設定を保存しました。"
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("おすすめ設定を保存")
+                }
+
+                recommendationSaveMessage?.let { message ->
+                    Text(message, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+
+        AppCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 Text("ラーメン提案の天候設定", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "店舗住所の天気をリアルタイム更新して、おすすめ提案に反映します。",
@@ -1258,10 +1460,16 @@ private fun SettingsTab(
                         selectedWeather = WeatherCondition.SUNNY
                         temperatureInput = WeatherContext().temperatureC.toString()
                         weatherCityInput = MakimuraShop.ADDRESS_LABEL
+                        selectedAppetite = RecommendationPreferences().appetiteLevel
+                        selectedMood = RecommendationPreferences().moodPreference
+                        excludedToppings = RecommendationPreferences().excludedToppings
+                        shopHoursNote = RecommendationPreferences().shopHoursNote
+                        crowdNote = RecommendationPreferences().crowdNote
                         saveMessage = null
                         weatherSaveMessage = null
                         weatherMessageIsError = false
                         persistenceSaveMessage = "保存データを削除しました。"
+                        recommendationSaveMessage = null
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -1367,9 +1575,14 @@ private fun MetricsCard(metrics: TodayMetrics) {
 private fun RecommendationCard(
     weatherContext: WeatherContext,
     recommendation: RamenRecommendation,
+    recommendationPreferences: RecommendationPreferences,
     weatherCity: String,
     weatherUpdatedAtEpochMs: Long,
 ) {
+    var showDetailedReason by rememberSaveable { mutableStateOf(false) }
+    val shortReason = remember(recommendation.reason) {
+        recommendation.reason.split(" / ").firstOrNull().orEmpty()
+    }
     AppCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
@@ -1396,11 +1609,18 @@ private fun RecommendationCard(
 
             Spacer(modifier = Modifier.height(4.dp))
             MetricRow("合計", formatYen(recommendation.totalYen))
+            FilterChip(
+                selected = showDetailedReason,
+                onClick = { showDetailedReason = !showDetailedReason },
+                label = { Text(if (showDetailedReason) "詳しく見る: ON" else "ひとことで見る") },
+            )
             Text(
-                text = recommendation.reason,
+                text = if (showDetailedReason) recommendation.reason else shortReason,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
+            Text(recommendationPreferences.shopHoursNote, style = MaterialTheme.typography.bodySmall)
+            Text(recommendationPreferences.crowdNote, style = MaterialTheme.typography.bodySmall)
             if (weatherUpdatedAtEpochMs > 0L) {
                 Text(
                     text = "天気更新: ${formatDateTime(weatherUpdatedAtEpochMs)}",
@@ -1459,6 +1679,23 @@ private fun weatherLabel(condition: WeatherCondition): String {
         WeatherCondition.CLOUDY -> "くもり"
         WeatherCondition.RAINY -> "雨"
         WeatherCondition.SNOWY -> "雪"
+    }
+}
+
+private fun appetiteLabel(level: AppetiteLevel): String {
+    return when (level) {
+        AppetiteLevel.LIGHT -> "軽め"
+        AppetiteLevel.NORMAL -> "普通"
+        AppetiteLevel.HUNGRY -> "がっつり"
+    }
+}
+
+private fun moodLabel(mood: MoodPreference): String {
+    return when (mood) {
+        MoodPreference.ANY -> "おまかせ"
+        MoodPreference.RICH -> "こってり"
+        MoodPreference.REFRESHING -> "あっさり"
+        MoodPreference.WARMING -> "温まりたい"
     }
 }
 

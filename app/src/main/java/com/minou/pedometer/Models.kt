@@ -51,6 +51,19 @@ enum class WeatherCondition {
     SNOWY,
 }
 
+enum class AppetiteLevel {
+    LIGHT,
+    NORMAL,
+    HUNGRY,
+}
+
+enum class MoodPreference {
+    ANY,
+    RICH,
+    REFRESHING,
+    WARMING,
+}
+
 data class WeatherContext(
     val condition: WeatherCondition = WeatherCondition.SUNNY,
     val temperatureC: Int = 20,
@@ -75,6 +88,33 @@ data class UserProfile(
         get() = weightKg?.coerceIn(30.0, 200.0)
 }
 
+data class RecommendationPreferences(
+    val excludedToppings: Set<String> = emptySet(),
+    val appetiteLevel: AppetiteLevel = AppetiteLevel.NORMAL,
+    val moodPreference: MoodPreference = MoodPreference.ANY,
+    val shopHoursNote: String = MakimuraShop.DEFAULT_HOURS_NOTE,
+    val crowdNote: String = MakimuraShop.DEFAULT_CROWD_NOTE,
+) {
+    val normalizedShopHoursNote: String
+        get() = shopHoursNote.trim().ifBlank { MakimuraShop.DEFAULT_HOURS_NOTE }.take(200)
+
+    val normalizedCrowdNote: String
+        get() = crowdNote.trim().ifBlank { MakimuraShop.DEFAULT_CROWD_NOTE }.take(200)
+}
+
+data class RecommendationHistoryEntry(
+    val createdAtEpochMs: Long,
+    val dayEpoch: Long,
+    val tier: RecommendationTier,
+    val steps: Int,
+    val weatherCondition: WeatherCondition,
+    val temperatureC: Int,
+    val itemNames: List<String>,
+    val totalYen: Int,
+    val reason: String,
+    val signature: String,
+)
+
 data class DailyHistory(
     val dayEpoch: Long,
     val steps: Int,
@@ -90,7 +130,9 @@ data class DailyHistory(
 data class TrackingUiState(
     val metrics: TodayMetrics = TodayMetrics(),
     val history: List<DailyHistory> = emptyList(),
+    val recommendationHistory: List<RecommendationHistoryEntry> = emptyList(),
     val userProfile: UserProfile = UserProfile(),
+    val recommendationPreferences: RecommendationPreferences = RecommendationPreferences(),
     val weatherContext: WeatherContext = WeatherContext(),
     val weatherCity: String = MakimuraShop.ADDRESS_LABEL,
     val weatherUpdatedAtEpochMs: Long = 0L,

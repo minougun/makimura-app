@@ -29,6 +29,10 @@ const MAX_WEIGHT_KG = 200.0;
 const SHOP_LAT = 34.752251;
 const SHOP_LON = 135.546295;
 const SHOP_ADDRESS = "〒533-0005 大阪府大阪市東淀川区瑞光4-7-6ビスタ瑞光101";
+const DEFAULT_HOURS_NOTE = "営業時間メモ: 11:00-14:00 / 18:00-22:00";
+const DEFAULT_CROWD_NOTE = "混雑メモ: 12時前後と19時前後は混みやすい";
+const APPETITE_LEVELS = ["LIGHT", "NORMAL", "HUNGRY"];
+const MOOD_PREFERENCES = ["ANY", "RICH", "REFRESHING", "WARMING"];
 
 // ===== Menu Catalog =====
 const MENU_CATEGORIES = [
@@ -69,10 +73,13 @@ const TOPPING_NAMES = new Set(
 );
 
 // ===== Recommendation Engine =====
-function recommend(metrics, weatherContext) {
-  const tier = tierFromSteps(metrics.steps);
+function recommend(metrics, weatherContext, preferences = normalizeRecommendationPreferences()) {
+  const tier = adjustedTier(tierFromSteps(metrics.steps), preferences.appetiteLevel);
   const selectedNames = [...baseItemsByTier(tier)];
   const reasons = [`歩数 ${metrics.steps}歩に合わせた${tierLabel(tier)}構成`];
+  const excludedToppings = new Set(
+    (preferences.excludedToppings ?? []).filter((name) => TOPPING_NAMES.has(name)),
+  );
 
   const isColdOrWet =
     weatherContext.temperatureC <= 8 ||
@@ -81,36 +88,70 @@ function recommend(metrics, weatherContext) {
   const isHot = weatherContext.temperatureC >= 28;
 
   if (isColdOrWet) {
-    addIfMissing(selectedNames, "ニンニク");
-    if (tier !== "LIGHT") addIfMissing(selectedNames, "キムチ");
+    addIfAllowed(selectedNames, "ニンニク", excludedToppings);
+    if (tier !== "LIGHT") addIfAllowed(selectedNames, "キムチ", excludedToppings);
     reasons.push("低気温/雨雪なので温まり系を追加");
   } else if (isHot) {
     removeItem(selectedNames, "キムチ");
     removeItem(selectedNames, "ニンニク");
     replaceItem(selectedNames, "ミニチャーシュー丼", "明太子ご飯");
-    addIfMissing(selectedNames, "ねぎ");
-    addIfMissing(selectedNames, "コーン");
-    if (tier !== "LIGHT") addIfMissing(selectedNames, "煮卵");
+    addIfAllowed(selectedNames, "ねぎ", excludedToppings);
+    addIfAllowed(selectedNames, "コーン", excludedToppings);
+    if (tier !== "LIGHT") addIfAllowed(selectedNames, "煮卵", excludedToppings);
     reasons.push("高気温なのでさっぱり系を優先");
   } else {
     reasons.push("気温は中間帯なので標準バランス");
   }
 
   if (tier === "REWARD") {
-    addIfMissing(selectedNames, "チャーシュー3枚");
+    addIfAllowed(selectedNames, "チャーシュー3枚", excludedToppings);
     reasons.push("高運動量なのでチャーシュー3枚でタンパク質補給");
   } else if (tier === "BALANCE" && isColdOrWet) {
-    addIfMissing(selectedNames, "チャーシュー2枚");
+    addIfAllowed(selectedNames, "チャーシュー2枚", excludedToppings);
     reasons.push("寒い日はチャーシュー2枚で栄養補給");
   } else if (tier === "BALANCE") {
-    addIfMissing(selectedNames, "チャーシュー1枚");
+    addIfAllowed(selectedNames, "チャーシュー1枚", excludedToppings);
     reasons.push("バランス運動量なのでチャーシュー1枚を追加");
   }
+
+  if (preferences.moodPreference === "RICH") {
+    addFirstAllowed(selectedNames, excludedToppings, "チャーシュー2枚", "チャーシュー1枚", "煮卵");
+    addIfAllowed(selectedNames, "ニンニク", excludedToppings);
+    reasons.push("気分設定でこってり寄りに調整");
+  } else if (preferences.moodPreference === "REFRESHING") {
+    removeItem(selectedNames, "ニンニク");
+    removeItem(selectedNames, "キムチ");
+    addIfAllowed(selectedNames, "ねぎ", excludedToppings);
+    addIfAllowed(selectedNames, "コーン", excludedToppings);
+    reasons.push("気分設定でさっぱり寄りに調整");
+  } else if (preferences.moodPreference === "WARMING") {
+    addIfAllowed(selectedNames, "ニンニク", excludedToppings);
+    addIfAllowed(selectedNames, "キムチ", excludedToppings);
+    reasons.push("気分設定で温まり系を優先");
+  }
+
+  applyToppingExclusions(selectedNames, tier, excludedToppings);
 
   const items = selectedNames.map((name) => ({ name, priceYen: PRICE_TABLE[name] ?? 0 }));
   const totalYen = items.reduce((sum, item) => sum + item.priceYen, 0);
 
   return { tier, items, reason: reasons.join(" / "), totalYen };
+}
+
+function adjustedTier(baseTier, appetiteLevel) {
+  if (appetiteLevel === "LIGHT") {
+    if (baseTier === "REWARD") return "BALANCE";
+    if (baseTier === "BALANCE") return "LIGHT";
+    return "LIGHT";
+  }
+
+  if (appetiteLevel === "HUNGRY") {
+    if (baseTier === "LIGHT") return "BALANCE";
+    if (baseTier === "BALANCE") return "REWARD";
+    return "REWARD";
+  }
+
+  return baseTier;
 }
 
 function tierFromSteps(steps) {
@@ -131,6 +172,19 @@ function tierLabel(tier) {
   return "ご褒美";
 }
 
+function appetiteLabel(level) {
+  if (level === "LIGHT") return "軽め";
+  if (level === "HUNGRY") return "がっつり";
+  return "普通";
+}
+
+function moodLabel(mood) {
+  if (mood === "RICH") return "こってり";
+  if (mood === "REFRESHING") return "あっさり";
+  if (mood === "WARMING") return "温まりたい";
+  return "おまかせ";
+}
+
 function recommendationToppingNames(rec) {
   return rec.items
     .map((item) => item.name)
@@ -147,6 +201,16 @@ function addIfMissing(arr, name) {
   if (!arr.includes(name)) arr.push(name);
 }
 
+function addIfAllowed(arr, name, excludedToppings) {
+  if (excludedToppings.has(name)) return;
+  addIfMissing(arr, name);
+}
+
+function addFirstAllowed(arr, excludedToppings, ...candidates) {
+  const candidate = candidates.find((name) => !excludedToppings.has(name));
+  if (candidate) addIfMissing(arr, candidate);
+}
+
 function removeItem(arr, name) {
   const idx = arr.indexOf(name);
   if (idx >= 0) arr.splice(idx, 1);
@@ -155,6 +219,30 @@ function removeItem(arr, name) {
 function replaceItem(arr, oldName, newName) {
   const idx = arr.indexOf(oldName);
   if (idx >= 0) arr[idx] = newName;
+}
+
+function applyToppingExclusions(selectedNames, tier, excludedToppings) {
+  if (excludedToppings.size === 0) return;
+
+  for (const name of [...selectedNames]) {
+    if (excludedToppings.has(name)) removeItem(selectedNames, name);
+  }
+
+  const targetCount = tier === "LIGHT" ? 1 : 2;
+  const currentCount = selectedNames.filter((name) => TOPPING_NAMES.has(name)).length;
+  if (currentCount >= targetCount) return;
+
+  fallbackToppingsForTier(tier).forEach((candidate) => {
+    const count = selectedNames.filter((name) => TOPPING_NAMES.has(name)).length;
+    if (count >= targetCount) return;
+    addIfAllowed(selectedNames, candidate, excludedToppings);
+  });
+}
+
+function fallbackToppingsForTier(tier) {
+  if (tier === "LIGHT") return ["ねぎ", "コーン", "煮卵", "メンマ"];
+  if (tier === "BALANCE") return ["煮卵", "メンマ", "ねぎ", "コーン", "チャーシュー1枚"];
+  return ["チャーシュー2枚", "煮卵", "メンマ", "ねぎ", "コーン"];
 }
 
 // ===== State =====
@@ -170,6 +258,9 @@ state.settingsMessageIsError = false;
 state.weatherMessage = "";
 state.weatherMessageIsError = false;
 state.weatherLoading = false;
+state.showDetailedReason = false;
+state.recommendationSettingsMessage = "";
+state.recommendationSettingsMessageIsError = false;
 
 if (state.pendingStorageMigration) {
   persistState();
@@ -193,6 +284,7 @@ const runtime = {
     recommendationItemsKey: "",
     currentOrderKey: "",
   },
+  recommendationPreferencesDraft: null,
 };
 
 let persistTimer = 0;
@@ -216,7 +308,10 @@ const els = {
   recTier: document.getElementById("rec-tier"),
   recItems: document.getElementById("rec-items"),
   recTotal: document.getElementById("rec-total"),
+  toggleReasonDetail: document.getElementById("toggle-reason-detail"),
   recReason: document.getElementById("rec-reason"),
+  shopHoursNote: document.getElementById("shop-hours-note"),
+  crowdNote: document.getElementById("crowd-note"),
   recUpdated: document.getElementById("rec-updated"),
   homeSteps: document.getElementById("home-steps"),
   homeCalories: document.getElementById("home-calories"),
@@ -229,6 +324,9 @@ const els = {
   menuChips: [],
   currentOrder: document.getElementById("current-order"),
   orderTotal: document.getElementById("order-total"),
+  orderDiffCard: document.getElementById("order-diff-card"),
+  orderDiffAdded: document.getElementById("order-diff-added"),
+  orderDiffRemoved: document.getElementById("order-diff-removed"),
 
   // Activity
   activityDashboard: document.getElementById("activity-dashboard"),
@@ -265,6 +363,7 @@ const els = {
   historyChart: document.getElementById("history-chart"),
   historyMessage: document.getElementById("history-message"),
   historyTableBody: document.getElementById("history-table-body"),
+  recommendationHistoryList: document.getElementById("recommendation-history-list"),
   downloadCsvButton: document.getElementById("download-csv"),
   shareCsvButton: document.getElementById("share-csv"),
 
@@ -283,6 +382,13 @@ const els = {
   recalcScaleButton: document.getElementById("recalc-scale"),
   saveSettingsButton: document.getElementById("save-settings"),
   settingsMessage: document.getElementById("settings-message"),
+  excludeToppingChips: document.getElementById("exclude-topping-chips"),
+  appetiteChips: document.getElementById("appetite-chips"),
+  moodChips: document.getElementById("mood-chips"),
+  shopHoursNoteInput: document.getElementById("shop-hours-note-input"),
+  crowdNoteInput: document.getElementById("crowd-note-input"),
+  saveRecommendationSettingsButton: document.getElementById("save-recommendation-settings"),
+  recommendationSettingsMessage: document.getElementById("recommendation-settings-message"),
   persistOptIn: document.getElementById("persist-opt-in"),
   persistModeNote: document.getElementById("persist-mode-note"),
 
@@ -300,6 +406,7 @@ const els = {
 
 // ===== Init =====
 buildMenuCatalog();
+buildRecommendationSettingsControls();
 bindEvents();
 ensureCurrentDay();
 renderAll();
@@ -317,6 +424,11 @@ function bindEvents() {
   });
 
   // Home
+  els.toggleReasonDetail.addEventListener("click", () => {
+    state.showDetailedReason = !state.showDetailedReason;
+    renderHome();
+  });
+
   els.applyRecommendation.addEventListener("click", () => {
     const rec = getCurrentRecommendation();
     state.orderSelectedNames = rec.items
@@ -432,6 +544,10 @@ function bindEvents() {
     saveSettings();
   });
 
+  els.saveRecommendationSettingsButton.addEventListener("click", () => {
+    saveRecommendationSettings();
+  });
+
   els.persistOptIn.addEventListener("change", () => {
     updatePersistencePreference(els.persistOptIn.checked);
   });
@@ -530,12 +646,15 @@ function recommendationStateKey(metrics, weatherContext) {
 }
 
 function getCurrentRecommendation() {
-  const key = recommendationStateKey(state.metrics, state.weatherContext);
+  const key = [
+    recommendationStateKey(state.metrics, state.weatherContext),
+    JSON.stringify(state.recommendationPreferences),
+  ].join("|");
   if (runtime.recommendationCacheKey === key && runtime.recommendationCacheValue) {
     return runtime.recommendationCacheValue;
   }
 
-  const recommendation = recommend(state.metrics, state.weatherContext);
+  const recommendation = recommend(state.metrics, state.weatherContext, state.recommendationPreferences);
   runtime.recommendationCacheKey = key;
   runtime.recommendationCacheValue = recommendation;
   return recommendation;
@@ -561,12 +680,56 @@ function renderMetricRows(container, items, cacheKeyName) {
   runtime.renderCache[cacheKeyName] = nextKey;
 }
 
+function recommendationSignature(metrics, weatherContext, preferences, recommendation) {
+  return [
+    recommendation.tier,
+    weatherContext.condition,
+    weatherContext.temperatureC,
+    preferences.appetiteLevel,
+    preferences.moodPreference,
+    [...preferences.excludedToppings].sort().join(","),
+    recommendation.items.map((item) => item.name).join(","),
+  ].join("|");
+}
+
+function recordRecommendationHistory(recommendation) {
+  const entry = {
+    createdAtEpochMs: Date.now(),
+    dayEpoch: state.metrics.dayEpoch,
+    tier: recommendation.tier,
+    steps: state.metrics.steps,
+    weatherCondition: state.weatherContext.condition,
+    temperatureC: state.weatherContext.temperatureC,
+    itemNames: recommendation.items.map((item) => item.name),
+    totalYen: recommendation.totalYen,
+    reason: recommendation.reason.slice(0, 300),
+    signature: recommendationSignature(
+      state.metrics,
+      state.weatherContext,
+      state.recommendationPreferences,
+      recommendation,
+    ),
+  };
+
+  const currentTop = state.recommendationHistory[0];
+  if (currentTop?.signature === entry.signature) return;
+
+  state.recommendationHistory = [
+    entry,
+    ...state.recommendationHistory.filter((item) => item.signature !== entry.signature),
+  ].slice(0, 20);
+  schedulePersist();
+}
+
 // ===== Render: Home =====
 function renderHome() {
   const m = state.metrics;
   const wc = state.weatherContext;
   const rec = getCurrentRecommendation();
   const toppingNames = recommendationToppingNames(rec);
+  const shortReason = rec.reason.split(" / ").filter(Boolean)[0] ?? "";
+
+  recordRecommendationHistory(rec);
 
   els.homeSummary.textContent = homeRecommendationSummary(m, wc, rec);
   els.homeHighlightList.replaceChildren(
@@ -592,7 +755,10 @@ function renderHome() {
   renderMetricRows(els.recItems, rec.items, "recommendationItemsKey");
 
   els.recTotal.textContent = formatYen(rec.totalYen);
-  els.recReason.textContent = rec.reason;
+  els.toggleReasonDetail.textContent = state.showDetailedReason ? "詳しく見る: ON" : "ひとことで見る";
+  els.recReason.textContent = state.showDetailedReason ? rec.reason : shortReason;
+  els.shopHoursNote.textContent = state.recommendationPreferences.shopHoursNote;
+  els.crowdNote.textContent = state.recommendationPreferences.crowdNote;
   els.recUpdated.textContent = state.weatherUpdatedAtEpochMs > 0
     ? `天気更新: ${formatDateTime(state.weatherUpdatedAtEpochMs)}`
     : "";
@@ -646,6 +812,86 @@ function buildMenuCatalog() {
   els.menuChips = els.menuCatalog.querySelectorAll(".menu-chip[data-item-name]");
 }
 
+function buildRecommendationSettingsControls() {
+  const toppingNames = ["ねぎ", "ニンニク", "コーン", "煮卵", "メンマ", "キムチ", "納豆"];
+  toppingNames.forEach((name) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.dataset.excludeTopping = name;
+    chip.textContent = name;
+    chip.addEventListener("click", () => {
+      const current = new Set(getRecommendationPreferencesDraft().excludedToppings);
+      if (current.has(name)) {
+        current.delete(name);
+      } else {
+        current.add(name);
+      }
+      runtime.recommendationPreferencesDraft = {
+        ...getRecommendationPreferencesDraft(),
+        excludedToppings: [...current],
+      };
+      renderRecommendationPreferenceChips();
+    });
+    els.excludeToppingChips.appendChild(chip);
+  });
+
+  APPETITE_LEVELS.forEach((level) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.dataset.appetite = level;
+    chip.textContent = appetiteLabel(level);
+    chip.addEventListener("click", () => {
+      runtime.recommendationPreferencesDraft = {
+        ...getRecommendationPreferencesDraft(),
+        appetiteLevel: level,
+      };
+      renderRecommendationPreferenceChips();
+    });
+    els.appetiteChips.appendChild(chip);
+  });
+
+  MOOD_PREFERENCES.forEach((mood) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.dataset.mood = mood;
+    chip.textContent = moodLabel(mood);
+    chip.addEventListener("click", () => {
+      runtime.recommendationPreferencesDraft = {
+        ...getRecommendationPreferencesDraft(),
+        moodPreference: mood,
+      };
+      renderRecommendationPreferenceChips();
+    });
+    els.moodChips.appendChild(chip);
+  });
+}
+
+function renderRecommendationPreferenceChips() {
+  const draft = getRecommendationPreferencesDraft();
+  els.excludeToppingChips.querySelectorAll("[data-exclude-topping]").forEach((chip) => {
+    chip.classList.toggle(
+      "is-active",
+      draft.excludedToppings.includes(chip.dataset.excludeTopping),
+    );
+  });
+  els.appetiteChips.querySelectorAll("[data-appetite]").forEach((chip) => {
+    chip.classList.toggle("is-active", chip.dataset.appetite === draft.appetiteLevel);
+  });
+  els.moodChips.querySelectorAll("[data-mood]").forEach((chip) => {
+    chip.classList.toggle("is-active", chip.dataset.mood === draft.moodPreference);
+  });
+}
+
+function getRecommendationPreferencesDraft() {
+  if (!runtime.recommendationPreferencesDraft) {
+    runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(state.recommendationPreferences);
+  }
+  return runtime.recommendationPreferencesDraft;
+}
+
 function toggleOrderItem(name) {
   if (CHASHU_NAMES.includes(name)) {
     const wasSelected = state.orderSelectedNames.includes(name);
@@ -691,6 +937,20 @@ function renderCurrentOrder() {
 
   const total = sorted.reduce((sum, name) => sum + (PRICE_TABLE[name] ?? 0), 0);
   els.orderTotal.textContent = formatYen(total);
+
+  const recommendedSelection = new Set(getCurrentRecommendation().items.map((item) => item.name));
+  REQUIRED_NAMES.forEach((name) => recommendedSelection.add(name));
+  const currentSelection = new Set(allSelected);
+  const addedItems = [...currentSelection]
+    .filter((name) => !recommendedSelection.has(name) && !REQUIRED_NAMES.has(name))
+    .sort((a, b) => (PRICE_TABLE[a] ?? 0) - (PRICE_TABLE[b] ?? 0));
+  const removedItems = [...recommendedSelection]
+    .filter((name) => !currentSelection.has(name) && !REQUIRED_NAMES.has(name))
+    .sort((a, b) => (PRICE_TABLE[a] ?? 0) - (PRICE_TABLE[b] ?? 0));
+
+  renderSimpleList(els.orderDiffAdded, addedItems, "おすすめとの差分はありません。");
+  renderSimpleList(els.orderDiffRemoved, removedItems, "おすすめの内容をそのまま選んでいます。");
+  els.orderDiffCard.classList.toggle("is-hidden", addedItems.length === 0 && removedItems.length === 0);
 }
 
 // ===== Render: Activity =====
@@ -762,6 +1022,7 @@ function renderHistory() {
 
   els.historyMessage.textContent = state.historyMessage;
   els.historyMessage.classList.toggle("error", state.historyMessageIsError === true);
+  renderRecommendationHistory();
 }
 
 function renderHistoryChart(days) {
@@ -843,6 +1104,12 @@ function renderSettingsFromState() {
     : "";
 
   els.persistOptIn.checked = state.persistOptIn === true;
+  runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(state.recommendationPreferences);
+  renderRecommendationPreferenceChips();
+  els.shopHoursNoteInput.value = runtime.recommendationPreferencesDraft.shopHoursNote;
+  els.crowdNoteInput.value = runtime.recommendationPreferencesDraft.crowdNote;
+  els.recommendationSettingsMessage.textContent = state.recommendationSettingsMessage;
+  els.recommendationSettingsMessage.classList.toggle("error", state.recommendationSettingsMessageIsError === true);
   renderPersistenceModeNote();
 
   renderSettingsPreview();
@@ -896,6 +1163,24 @@ function saveSettings() {
   renderSettingsPreview();
 }
 
+function saveRecommendationSettings() {
+  const nextPreferences = normalizeRecommendationPreferences({
+    ...getRecommendationPreferencesDraft(),
+    shopHoursNote: els.shopHoursNoteInput.value,
+    crowdNote: els.crowdNoteInput.value,
+  });
+
+  state.recommendationPreferences = nextPreferences;
+  runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(nextPreferences);
+  state.recommendationSettingsMessage = "おすすめの好み設定を保存しました。";
+  state.recommendationSettingsMessageIsError = false;
+  schedulePersist(true);
+  renderHome();
+  renderOrder();
+  if (state.activitySubView === "history") renderHistory();
+  renderSettingsFromState();
+}
+
 function updatePersistencePreference(enabled) {
   const nextValue = enabled === true;
   state.persistOptIn = nextValue;
@@ -933,13 +1218,21 @@ function clearLocalData() {
   state.profile = normalizeProfile();
   state.metrics = newMetrics(currentDayEpoch());
   state.history = [];
+  state.recommendationHistory = [];
+  state.recommendationPreferences = normalizeRecommendationPreferences();
   state.historyRangeDays = null;
   state.orderSelectedNames = [];
   state.weatherContext = { condition: "SUNNY", temperatureC: 20 };
   state.weatherUpdatedAtEpochMs = 0;
   state.sensorSupported = true;
   state.persistOptIn = false;
+  state.showDetailedReason = false;
+  state.recommendationSettingsMessage = "";
+  state.recommendationSettingsMessageIsError = false;
   resetCadenceRuntime();
+  runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences();
+  runtime.recommendationCacheKey = "";
+  runtime.recommendationCacheValue = null;
 
   clearStoredState();
   writePersistPreference(false);
@@ -1441,6 +1734,59 @@ function renderAll() {
   renderSettingsFromState();
 }
 
+function renderRecommendationHistory() {
+  els.recommendationHistoryList.replaceChildren();
+
+  if (state.recommendationHistory.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "おすすめ履歴はまだありません。";
+    els.recommendationHistoryList.appendChild(empty);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  state.recommendationHistory.slice(0, 10).forEach((entry) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "metric-list-entry";
+
+    const summaryRow = document.createElement("div");
+    summaryRow.className = "metric-row";
+    const time = document.createElement("span");
+    time.textContent = formatDateTime(entry.createdAtEpochMs);
+    const total = document.createElement("span");
+    total.textContent = `${tierLabel(entry.tier)} / ${formatYen(entry.totalYen)}`;
+    summaryRow.append(time, total);
+
+    const items = document.createElement("p");
+    items.className = "muted";
+    items.textContent = entry.itemNames.join(" / ");
+
+    wrapper.append(summaryRow, items);
+    fragment.appendChild(wrapper);
+  });
+  els.recommendationHistoryList.appendChild(fragment);
+}
+
+function renderSimpleList(container, values, emptyMessage) {
+  container.replaceChildren();
+  if (values.length === 0) {
+    const item = document.createElement("li");
+    item.className = "muted";
+    item.textContent = emptyMessage;
+    container.appendChild(item);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  values.forEach((value) => {
+    const item = document.createElement("li");
+    item.textContent = value;
+    fragment.appendChild(item);
+  });
+  container.appendChild(fragment);
+}
+
 // ===== CSV export =====
 async function exportCsv(share) {
   const rows = filteredHistory(state.history, state.historyRangeDays);
@@ -1538,6 +1884,8 @@ function loadState() {
     profile: normalizeProfile(),
     metrics: newMetrics(currentDayEpoch()),
     history: [],
+    recommendationHistory: [],
+    recommendationPreferences: normalizeRecommendationPreferences(),
     historyRangeDays: null,
     weatherContext: { condition: "SUNNY", temperatureC: 20 },
     weatherUpdatedAtEpochMs: 0,
@@ -1569,6 +1917,8 @@ function loadState() {
     profile: normalizeProfile(parsed.profile),
     metrics: normalizeMetrics(parsed.metrics),
     history: normalizeHistory(parsed.history),
+    recommendationHistory: normalizeRecommendationHistory(parsed.recommendationHistory),
+    recommendationPreferences: normalizeRecommendationPreferences(parsed.recommendationPreferences),
     historyRangeDays: normalizeHistoryRangeDays(parsed.historyRangeDays),
     weatherContext: {
       condition: validConditions.includes(wc.condition) ? wc.condition : "SUNNY",
@@ -1620,6 +1970,8 @@ function persistState() {
       profile: state.profile,
       metrics: state.metrics,
       history: state.history,
+      recommendationHistory: state.recommendationHistory,
+      recommendationPreferences: state.recommendationPreferences,
       historyRangeDays: state.historyRangeDays,
       weatherContext: state.weatherContext,
       weatherUpdatedAtEpochMs: state.weatherUpdatedAtEpochMs,
@@ -1701,6 +2053,52 @@ function normalizeHistory(history) {
   }
 
   return unique.slice(0, HISTORY_LIMIT);
+}
+
+function normalizeRecommendationPreferences(preferences) {
+  const source = preferences ?? {};
+  const excludedToppings = Array.isArray(source.excludedToppings)
+    ? source.excludedToppings.filter((name) => typeof name === "string" && TOPPING_NAMES.has(name))
+    : [];
+  const appetiteLevel = APPETITE_LEVELS.includes(source.appetiteLevel) ? source.appetiteLevel : "NORMAL";
+  const moodPreference = MOOD_PREFERENCES.includes(source.moodPreference) ? source.moodPreference : "ANY";
+
+  return {
+    excludedToppings: [...new Set(excludedToppings)],
+    appetiteLevel,
+    moodPreference,
+    shopHoursNote: typeof source.shopHoursNote === "string"
+      ? source.shopHoursNote.trim().slice(0, 200) || DEFAULT_HOURS_NOTE
+      : DEFAULT_HOURS_NOTE,
+    crowdNote: typeof source.crowdNote === "string"
+      ? source.crowdNote.trim().slice(0, 200) || DEFAULT_CROWD_NOTE
+      : DEFAULT_CROWD_NOTE,
+  };
+}
+
+function normalizeRecommendationHistory(history) {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .map((item) => ({
+      createdAtEpochMs: Math.max(0, toInteger(item?.createdAtEpochMs, 0)),
+      dayEpoch: toInteger(item?.dayEpoch, currentDayEpoch()),
+      tier: ["LIGHT", "BALANCE", "REWARD"].includes(item?.tier) ? item.tier : "LIGHT",
+      steps: Math.max(0, toInteger(item?.steps, 0)),
+      weatherCondition: ["SUNNY", "CLOUDY", "RAINY", "SNOWY"].includes(item?.weatherCondition)
+        ? item.weatherCondition
+        : "SUNNY",
+      temperatureC: clamp(toInteger(item?.temperatureC, 20), -20, 45),
+      itemNames: Array.isArray(item?.itemNames)
+        ? item.itemNames.filter((name) => typeof name === "string" && name.trim() !== "").slice(0, 10)
+        : [],
+      totalYen: Math.max(0, toInteger(item?.totalYen, 0)),
+      reason: typeof item?.reason === "string" ? item.reason.trim().slice(0, 300) : "",
+      signature: typeof item?.signature === "string" ? item.signature.trim() : "",
+    }))
+    .filter((item) => item.signature !== "")
+    .sort((a, b) => b.createdAtEpochMs - a.createdAtEpochMs)
+    .slice(0, 20);
 }
 
 function normalizeHistoryRangeDays(days) {

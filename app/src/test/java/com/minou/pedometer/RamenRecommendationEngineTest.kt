@@ -109,4 +109,42 @@ class RamenRecommendationEngineTest {
             RamenRecommendationEngine.homeSummary(metrics, weatherContext, recommendation),
         )
     }
+
+    @Test
+    fun recommend_excludedToppings_fallsBackToAllowedItems() {
+        val recommendation = RamenRecommendationEngine.recommend(
+            metrics = TodayMetrics(steps = 8_100),
+            weatherContext = WeatherContext(
+                condition = WeatherCondition.SUNNY,
+                temperatureC = 20,
+            ),
+            preferences = RecommendationPreferences(
+                excludedToppings = setOf("煮卵", "メンマ"),
+            ),
+        )
+
+        assertFalse(recommendation.items.any { it.name == "煮卵" })
+        assertFalse(recommendation.items.any { it.name == "メンマ" })
+        assertTrue(recommendation.items.any { it.name == "ねぎ" })
+        assertTrue(recommendation.items.any { it.name == "チャーシュー1枚" })
+    }
+
+    @Test
+    fun recommend_hungryRichPreference_adjustsTierAndAddsRichItems() {
+        val recommendation = RamenRecommendationEngine.recommend(
+            metrics = TodayMetrics(steps = 1_500),
+            weatherContext = WeatherContext(
+                condition = WeatherCondition.SUNNY,
+                temperatureC = 22,
+            ),
+            preferences = RecommendationPreferences(
+                appetiteLevel = AppetiteLevel.HUNGRY,
+                moodPreference = MoodPreference.RICH,
+            ),
+        )
+
+        assertEquals(RecommendationTier.BALANCE, recommendation.tier)
+        assertTrue(recommendation.items.any { it.name == "ニンニク" })
+        assertTrue(recommendation.items.any { it.name == "チャーシュー2枚" || it.name == "チャーシュー1枚" })
+    }
 }

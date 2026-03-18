@@ -179,6 +179,14 @@ h3 {
   color: #fff5e8;
 }
 
+.highlight-list.compact {
+  margin: 6px 0 0;
+}
+
+.highlight-list.compact li {
+  color: var(--ink);
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -432,7 +440,8 @@ tbody td {
 }
 
 input,
-select {
+select,
+textarea {
   min-height: 38px;
   border: 1px solid rgba(131, 96, 74, 0.3);
   border-radius: 10px;
@@ -440,6 +449,12 @@ select {
   font: inherit;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.86);
+}
+
+textarea {
+  min-height: 76px;
+  padding: 10px;
+  resize: vertical;
 }
 
 input[type="range"] {
