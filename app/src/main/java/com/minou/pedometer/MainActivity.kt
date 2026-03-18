@@ -311,7 +311,6 @@ private fun PedometerScreen() {
 
                     AppTab.SETTINGS -> SettingsTab(
                         profile = uiState.userProfile,
-                        recommendationPreferences = uiState.recommendationPreferences,
                         weatherContext = uiState.weatherContext,
                         weatherCity = uiState.weatherCity,
                         weatherUpdatedAtEpochMs = uiState.weatherUpdatedAtEpochMs,
@@ -335,6 +334,10 @@ private fun HomeTabContent(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        RecommendationPreferencesCard(
+            recommendationPreferences = uiState.recommendationPreferences,
+        )
+
         AppCard(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -968,7 +971,6 @@ private fun HistoryBarChart(days: List<DailyHistory>) {
 @Composable
 private fun SettingsTab(
     profile: UserProfile,
-    recommendationPreferences: RecommendationPreferences,
     weatherContext: WeatherContext,
     weatherCity: String,
     weatherUpdatedAtEpochMs: Long,
@@ -990,15 +992,6 @@ private fun SettingsTab(
     var weatherSaveMessage by remember { mutableStateOf<String?>(null) }
     var weatherMessageIsError by remember { mutableStateOf(false) }
     var persistenceSaveMessage by remember { mutableStateOf<String?>(null) }
-    var selectedAppetite by remember(recommendationPreferences) { mutableStateOf(recommendationPreferences.appetiteLevel) }
-    var selectedMood by remember(recommendationPreferences) { mutableStateOf(recommendationPreferences.moodPreference) }
-    var excludedToppings by remember(recommendationPreferences) {
-        mutableStateOf(recommendationPreferences.excludedToppings)
-    }
-    var crowdNote by remember(recommendationPreferences) {
-        mutableStateOf(recommendationPreferences.crowdNote)
-    }
-    var recommendationSaveMessage by remember { mutableStateOf<String?>(null) }
 
     val previewProfile = remember(heightInput, weightInput, selectedSex, strideScale) {
         UserProfile(
@@ -1202,91 +1195,6 @@ private fun SettingsTab(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text("おすすめの好み設定", style = MaterialTheme.typography.titleMedium)
-                Text("苦手なトッピングや今の気分をおすすめに反映します。", style = MaterialTheme.typography.bodySmall)
-
-                Text("除外するトッピング", style = MaterialTheme.typography.titleSmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("ねぎ", "ニンニク", "コーン", "煮卵", "メンマ", "キムチ", "納豆").forEach { name ->
-                        FilterChip(
-                            selected = excludedToppings.contains(name),
-                            onClick = {
-                                excludedToppings = if (excludedToppings.contains(name)) {
-                                    excludedToppings - name
-                                } else {
-                                    excludedToppings + name
-                                }
-                            },
-                            label = { Text(name) },
-                        )
-                    }
-                }
-
-                Text("空腹度", style = MaterialTheme.typography.titleSmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AppetiteLevel.entries.forEach { level ->
-                        FilterChip(
-                            selected = selectedAppetite == level,
-                            onClick = { selectedAppetite = level },
-                            label = { Text(appetiteLabel(level)) },
-                        )
-                    }
-                }
-
-                Text("気分", style = MaterialTheme.typography.titleSmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MoodPreference.entries.forEach { mood ->
-                        FilterChip(
-                            selected = selectedMood == mood,
-                            onClick = { selectedMood = mood },
-                            label = { Text(moodLabel(mood)) },
-                        )
-                    }
-                }
-
-                OutlinedTextField(
-                    value = crowdNote,
-                    onValueChange = { value -> crowdNote = value.take(200) },
-                    label = { Text("混雑メモ") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Text(
-                    "Google Maps の公式 API では Popular Times を直接取得できないため、ここでは手動メモで管理します。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-
-                Button(
-                    onClick = {
-                        MetricsRepository.updateRecommendationPreferences(
-                            RecommendationPreferences(
-                                excludedToppings = excludedToppings,
-                                appetiteLevel = selectedAppetite,
-                                moodPreference = selectedMood,
-                                crowdNote = crowdNote,
-                            )
-                        )
-                        recommendationSaveMessage = "おすすめの好み設定を保存しました。"
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("おすすめ設定を保存")
-                }
-
-                recommendationSaveMessage?.let { message ->
-                    Text(message, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-
-        AppCard(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
                 Text("ラーメン提案の天候設定", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "店舗住所の天気をリアルタイム更新して、おすすめ提案に反映します。",
@@ -1478,15 +1386,10 @@ private fun SettingsTab(
                         selectedWeather = WeatherCondition.SUNNY
                         temperatureInput = WeatherContext().temperatureC.toString()
                         weatherCityInput = MakimuraShop.ADDRESS_LABEL
-                        selectedAppetite = RecommendationPreferences().appetiteLevel
-                        selectedMood = RecommendationPreferences().moodPreference
-                        excludedToppings = RecommendationPreferences().excludedToppings
-                        crowdNote = RecommendationPreferences().crowdNote
                         saveMessage = null
                         weatherSaveMessage = null
                         weatherMessageIsError = false
                         persistenceSaveMessage = "保存データを削除しました。"
-                        recommendationSaveMessage = null
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -1496,6 +1399,106 @@ private fun SettingsTab(
                     text = "共有端末では使用後に保存データの削除を推奨します。",
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecommendationPreferencesCard(
+    recommendationPreferences: RecommendationPreferences,
+) {
+    var selectedAppetite by remember(recommendationPreferences) { mutableStateOf(recommendationPreferences.appetiteLevel) }
+    var selectedMood by remember(recommendationPreferences) { mutableStateOf(recommendationPreferences.moodPreference) }
+    var excludedToppings by remember(recommendationPreferences) {
+        mutableStateOf(recommendationPreferences.excludedToppings)
+    }
+    var crowdNote by remember(recommendationPreferences) {
+        mutableStateOf(recommendationPreferences.crowdNote)
+    }
+    var recommendationSaveMessage by remember { mutableStateOf<String?>(null) }
+
+    AppCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("おすすめの好み設定", style = MaterialTheme.typography.titleMedium)
+            Text("苦手なトッピングや今の気分をおすすめに反映します。", style = MaterialTheme.typography.bodySmall)
+
+            Text("空腹度", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppetiteLevel.entries.forEach { level ->
+                    FilterChip(
+                        selected = selectedAppetite == level,
+                        onClick = { selectedAppetite = level },
+                        label = { Text(appetiteLabel(level)) },
+                    )
+                }
+            }
+
+            Text("気分", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MoodPreference.entries.forEach { mood ->
+                    FilterChip(
+                        selected = selectedMood == mood,
+                        onClick = { selectedMood = mood },
+                        label = { Text(moodLabel(mood)) },
+                    )
+                }
+            }
+
+            Text("除外するトッピング", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("ねぎ", "ニンニク", "コーン", "煮卵", "メンマ", "キムチ", "納豆").forEach { name ->
+                    FilterChip(
+                        selected = excludedToppings.contains(name),
+                        onClick = {
+                            excludedToppings = if (excludedToppings.contains(name)) {
+                                excludedToppings - name
+                            } else {
+                                excludedToppings + name
+                            }
+                        },
+                        label = { Text(name) },
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = crowdNote,
+                onValueChange = { value -> crowdNote = value.take(200) },
+                label = { Text("混雑メモ") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Text(
+                "Google Maps の公式 API では Popular Times を直接取得できないため、ここでは手動メモで管理します。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+
+            Button(
+                onClick = {
+                    MetricsRepository.updateRecommendationPreferences(
+                        RecommendationPreferences(
+                            excludedToppings = excludedToppings,
+                            appetiteLevel = selectedAppetite,
+                            moodPreference = selectedMood,
+                            crowdNote = crowdNote,
+                        )
+                    )
+                    recommendationSaveMessage = "おすすめの好み設定を保存しました。"
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("おすすめ設定を保存")
+            }
+
+            recommendationSaveMessage?.let { message ->
+                Text(message, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
