@@ -251,7 +251,7 @@ private fun PedometerScreen() {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "その日の運動量と天気で、今日の一杯を提案",
+                    text = "その日の気分と運動量と天気で、今日の一杯を提案",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -1520,11 +1520,6 @@ private fun RecommendationPreferencesCard(
                     )
                 }
             }
-            Text(
-                "選んだ内容はすぐおすすめに反映されます。混雑メモは設定タブから更新できます。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
         }
     }
 }

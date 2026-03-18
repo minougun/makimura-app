@@ -1,7 +1,7 @@
 {
   "name": "麺家まきむら",
   "short_name": "まきむら",
-  "description": "その日の運動量と天気で、今日の一杯を提案",
+  "description": "その日の気分と運動量と天気で、今日の一杯を提案",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

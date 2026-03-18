@@ -1,7 +1,7 @@
 package com.minou.pedometer
 
 object WeatherRefreshPolicy {
-    private const val STALE_DURATION_MS = 3 * 60 * 60 * 1_000L
+    private const val STALE_DURATION_MS = 2 * 60 * 60 * 1_000L
 
     fun shouldAutoRefresh(
         updatedAtEpochMs: Long,
