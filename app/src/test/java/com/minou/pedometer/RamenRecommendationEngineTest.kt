@@ -77,7 +77,7 @@ class RamenRecommendationEngineTest {
     }
 
     @Test
-    fun highlight_uses_topping_focused_copy() {
+    fun toppingHighlights_returns_recommended_toppings_only() {
         val recommendation = RamenRecommendationEngine.recommend(
             metrics = TodayMetrics(steps = 8_100),
             weatherContext = WeatherContext(
@@ -87,8 +87,8 @@ class RamenRecommendationEngineTest {
         )
 
         assertEquals(
-            "今日は「煮卵」と「メンマ」を中心におすすめします。",
-            RamenRecommendationEngine.highlight(recommendation),
+            listOf("煮卵", "メンマ", "チャーシュー1枚"),
+            RamenRecommendationEngine.toppingHighlights(recommendation),
         )
     }
 
@@ -105,7 +105,7 @@ class RamenRecommendationEngineTest {
         )
 
         assertEquals(
-            "今日は「ねぎ」推しです。 運動量 1500歩・晴れ 22°Cのライト提案です。",
+            "運動量 1500歩・晴れ 22°Cのライト提案です。",
             RamenRecommendationEngine.homeSummary(metrics, weatherContext, recommendation),
         )
     }

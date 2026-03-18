@@ -80,26 +80,23 @@ object RamenRecommendationEngine {
         weatherContext: WeatherContext,
         recommendation: RamenRecommendation,
     ): String {
+        val prefix = if (toppingHighlights(recommendation).isEmpty()) {
+            "今日は定番のラーメン構成です。 "
+        } else {
+            ""
+        }
         return buildString {
-            append(highlight(recommendation))
-            append(' ')
+            append(prefix)
             append("運動量 ${metrics.steps}歩・${summaryWeatherLabel(weatherContext.condition)} ${weatherContext.temperatureC}°Cの")
             append(tierLabel(recommendation.tier))
             append("提案です。")
         }
     }
 
-    fun highlight(recommendation: RamenRecommendation): String {
-        val toppingNames = recommendation.items
+    fun toppingHighlights(recommendation: RamenRecommendation): List<String> {
+        return recommendation.items
             .map { item -> item.name }
             .filter { name -> name in RamenMenuCatalog.toppingItemNames }
-
-        return when (toppingNames.size) {
-            0 -> "今日は定番のラーメン構成です。"
-            1 -> "今日は「${toppingNames[0]}」推しです。"
-            2 -> "今日は「${toppingNames[0]}」と「${toppingNames[1]}」推しです。"
-            else -> "今日は「${toppingNames[0]}」と「${toppingNames[1]}」を中心におすすめします。"
-        }
     }
 
     private fun tierFromSteps(steps: Int): RecommendationTier {

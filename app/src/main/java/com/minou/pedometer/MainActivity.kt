@@ -311,11 +311,26 @@ private fun HomeTabContent(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                val toppingHighlights = remember(recommendation) {
+                    RamenRecommendationEngine.toppingHighlights(recommendation)
+                }
                 Text(
                     text = "本日の推しトッピング",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
+                toppingHighlights.forEach { item ->
+                    Text(
+                        text = "・$item",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                if (toppingHighlights.isEmpty()) {
+                    Text(
+                        text = "・定番のラーメン構成",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
                 Text(
                     text = RamenRecommendationEngine.homeSummary(
                         metrics = uiState.metrics,

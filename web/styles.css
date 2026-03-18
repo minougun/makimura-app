@@ -168,6 +168,17 @@ h3 {
   margin: 0;
 }
 
+.highlight-list {
+  margin: 8px 0 12px;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.highlight-list li {
+  color: #fff5e8;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;

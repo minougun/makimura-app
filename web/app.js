@@ -131,28 +131,16 @@ function tierLabel(tier) {
   return "ご褒美";
 }
 
-function recommendationHighlight(rec) {
-  const toppingNames = rec.items
+function recommendationToppingNames(rec) {
+  return rec.items
     .map((item) => item.name)
     .filter((name) => TOPPING_NAMES.has(name));
-
-  if (toppingNames.length === 0) {
-    return "今日は定番のラーメン構成です。";
-  }
-
-  if (toppingNames.length === 1) {
-    return `今日は「${toppingNames[0]}」推しです。`;
-  }
-
-  if (toppingNames.length === 2) {
-    return `今日は「${toppingNames[0]}」と「${toppingNames[1]}」推しです。`;
-  }
-
-  return `今日は「${toppingNames[0]}」と「${toppingNames[1]}」を中心におすすめします。`;
 }
 
 function homeRecommendationSummary(metrics, weatherContext, rec) {
-  return `${recommendationHighlight(rec)} 運動量 ${metrics.steps}歩・${weatherLabel(weatherContext.condition)} ${weatherContext.temperatureC}°Cの${tierLabel(rec.tier)}提案です。`;
+  const hasToppings = recommendationToppingNames(rec).length > 0;
+  const prefix = hasToppings ? "" : "今日は定番のラーメン構成です。 ";
+  return `${prefix}運動量 ${metrics.steps}歩・${weatherLabel(weatherContext.condition)} ${weatherContext.temperatureC}°Cの${tierLabel(rec.tier)}提案です。`;
 }
 
 function addIfMissing(arr, name) {
@@ -220,6 +208,7 @@ const els = {
   tabPanels: document.querySelectorAll("[data-tab-panel]"),
 
   // Home
+  homeHighlightList: document.getElementById("home-highlight-list"),
   homeSummary: document.getElementById("home-summary"),
   applyRecommendation: document.getElementById("apply-recommendation"),
   recCity: document.getElementById("rec-city"),
@@ -577,8 +566,24 @@ function renderHome() {
   const m = state.metrics;
   const wc = state.weatherContext;
   const rec = getCurrentRecommendation();
+  const toppingNames = recommendationToppingNames(rec);
 
   els.homeSummary.textContent = homeRecommendationSummary(m, wc, rec);
+  els.homeHighlightList.replaceChildren(
+    ...(
+      toppingNames.length > 0
+        ? toppingNames.map((name) => {
+            const item = document.createElement("li");
+            item.textContent = name;
+            return item;
+          })
+        : [(() => {
+            const item = document.createElement("li");
+            item.textContent = "定番のラーメン構成";
+            return item;
+          })()]
+    ),
+  );
 
   els.recCity.textContent = SHOP_ADDRESS;
   els.recWeather.textContent = `${weatherLabel(wc.condition)} / ${wc.temperatureC}°C`;
