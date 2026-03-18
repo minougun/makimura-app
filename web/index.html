@@ -55,8 +55,8 @@
           </section>
           <div class="recommendation-note-grid">
             <section class="recommendation-note-card">
-              <p class="detail-label">営業時間メモ</p>
-              <p id="shop-hours-note" class="muted"></p>
+              <p class="detail-label">反映中の条件</p>
+              <p id="rec-preference-summary" class="muted"></p>
             </section>
             <section class="recommendation-note-card">
               <p class="detail-label">混雑メモ</p>
@@ -64,6 +64,11 @@
             </section>
           </div>
           <p id="rec-updated" class="detail-meta"></p>
+        </article>
+
+        <article class="card">
+          <h3>最近のおすすめ履歴</h3>
+          <div id="home-recommendation-history" class="metric-list"></div>
         </article>
 
         <article class="card">
@@ -277,11 +282,6 @@
 
           <p class="muted" style="margin-top:12px">気分</p>
           <div id="mood-chips" class="chip-group" style="margin-top:8px"></div>
-
-          <label class="field" style="margin-top:12px">
-            営業時間メモ
-            <textarea id="shop-hours-note-input" rows="2"></textarea>
-          </label>
 
           <label class="field" style="margin-top:12px">
             混雑メモ

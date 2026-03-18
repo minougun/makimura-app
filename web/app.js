@@ -197,6 +197,36 @@ function homeRecommendationSummary(metrics, weatherContext, rec) {
   return `${prefix}運動量 ${metrics.steps}歩・${weatherLabel(weatherContext.condition)} ${weatherContext.temperatureC}°Cの${tierLabel(rec.tier)}提案です。`;
 }
 
+function detailedRecommendationReason(metrics, weatherContext, preferences, recommendation) {
+  const lines = [];
+  lines.push(`今日は ${metrics.steps}歩なので、基本は${tierLabel(recommendation.tier)}寄りの構成にしています。`);
+
+  if (weatherContext.condition === "RAINY" || weatherContext.condition === "SNOWY" || weatherContext.temperatureC <= 8) {
+    lines.push(`天気は${weatherLabel(weatherContext.condition)}で ${weatherContext.temperatureC}°C なので、体が温まりやすい組み合わせを優先しました。`);
+  } else if (weatherContext.temperatureC >= 28) {
+    lines.push(`気温が ${weatherContext.temperatureC}°C と高いので、重すぎない食べやすい方向に寄せています。`);
+  } else {
+    lines.push(`気温と天候が極端ではないため、定番寄りのバランスで組んでいます。`);
+  }
+
+  lines.push(`空腹度は「${appetiteLabel(preferences.appetiteLevel)}」、気分は「${moodLabel(preferences.moodPreference)}」として反映しています。`);
+
+  if (preferences.excludedToppings.length > 0) {
+    lines.push(`苦手設定の ${preferences.excludedToppings.join(" / ")} は候補から外しました。`);
+  }
+
+  lines.push(`最終的に ${recommendation.items.map((item) => item.name).join(" + ")} を提案し、合計は ${formatYen(recommendation.totalYen)} です。`);
+  return lines.join("\n");
+}
+
+function recommendationPreferenceSummary(preferences) {
+  return [
+    `空腹度: ${appetiteLabel(preferences.appetiteLevel)}`,
+    `気分: ${moodLabel(preferences.moodPreference)}`,
+    `除外トッピング: ${preferences.excludedToppings.length > 0 ? preferences.excludedToppings.join(" / ") : "なし"}`,
+  ].join("\n");
+}
+
 function addIfMissing(arr, name) {
   if (!arr.includes(name)) arr.push(name);
 }
@@ -310,12 +340,13 @@ const els = {
   recTotal: document.getElementById("rec-total"),
   toggleReasonDetail: document.getElementById("toggle-reason-detail"),
   recReason: document.getElementById("rec-reason"),
-  shopHoursNote: document.getElementById("shop-hours-note"),
+  recPreferenceSummary: document.getElementById("rec-preference-summary"),
   crowdNote: document.getElementById("crowd-note"),
   recUpdated: document.getElementById("rec-updated"),
   homeSteps: document.getElementById("home-steps"),
   homeCalories: document.getElementById("home-calories"),
   homeBrisk: document.getElementById("home-brisk"),
+  homeRecommendationHistory: document.getElementById("home-recommendation-history"),
 
   // Order
   applyRecSet: document.getElementById("apply-rec-set"),
@@ -385,7 +416,6 @@ const els = {
   excludeToppingChips: document.getElementById("exclude-topping-chips"),
   appetiteChips: document.getElementById("appetite-chips"),
   moodChips: document.getElementById("mood-chips"),
-  shopHoursNoteInput: document.getElementById("shop-hours-note-input"),
   crowdNoteInput: document.getElementById("crowd-note-input"),
   saveRecommendationSettingsButton: document.getElementById("save-recommendation-settings"),
   recommendationSettingsMessage: document.getElementById("recommendation-settings-message"),
@@ -728,6 +758,12 @@ function renderHome() {
   const rec = getCurrentRecommendation();
   const toppingNames = recommendationToppingNames(rec);
   const shortReason = rec.reason.split(" / ").filter(Boolean)[0] ?? "";
+  const detailedReason = detailedRecommendationReason(
+    state.metrics,
+    state.weatherContext,
+    state.recommendationPreferences,
+    rec,
+  );
 
   recordRecommendationHistory(rec);
 
@@ -756,8 +792,8 @@ function renderHome() {
 
   els.recTotal.textContent = formatYen(rec.totalYen);
   els.toggleReasonDetail.textContent = state.showDetailedReason ? "詳しく見る: ON" : "ひとことで見る";
-  els.recReason.textContent = state.showDetailedReason ? rec.reason : shortReason;
-  els.shopHoursNote.textContent = state.recommendationPreferences.shopHoursNote;
+  els.recReason.textContent = state.showDetailedReason ? detailedReason : shortReason;
+  els.recPreferenceSummary.textContent = recommendationPreferenceSummary(state.recommendationPreferences);
   els.crowdNote.textContent = state.recommendationPreferences.crowdNote;
   els.recUpdated.textContent = state.weatherUpdatedAtEpochMs > 0
     ? `天気更新: ${formatDateTime(state.weatherUpdatedAtEpochMs)}`
@@ -766,6 +802,7 @@ function renderHome() {
   els.homeSteps.textContent = `${m.steps} 歩`;
   els.homeCalories.textContent = formatCalories(m.totalCaloriesKcal);
   els.homeBrisk.textContent = formatDuration(m.briskDurationMs);
+  renderHomeRecommendationHistory();
 }
 
 // ===== Render: Order =====
@@ -948,9 +985,9 @@ function renderCurrentOrder() {
     .filter((name) => !currentSelection.has(name) && !REQUIRED_NAMES.has(name))
     .sort((a, b) => (PRICE_TABLE[a] ?? 0) - (PRICE_TABLE[b] ?? 0));
 
-  renderSimpleList(els.orderDiffAdded, addedItems, "おすすめとの差分はありません。");
-  renderSimpleList(els.orderDiffRemoved, removedItems, "おすすめの内容をそのまま選んでいます。");
-  els.orderDiffCard.classList.toggle("is-hidden", addedItems.length === 0 && removedItems.length === 0);
+  renderSimpleList(els.orderDiffAdded, addedItems, "追加なし");
+  renderSimpleList(els.orderDiffRemoved, removedItems, "外した項目なし");
+  els.orderDiffCard.classList.remove("is-hidden");
 }
 
 // ===== Render: Activity =====
@@ -1106,7 +1143,6 @@ function renderSettingsFromState() {
   els.persistOptIn.checked = state.persistOptIn === true;
   runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(state.recommendationPreferences);
   renderRecommendationPreferenceChips();
-  els.shopHoursNoteInput.value = runtime.recommendationPreferencesDraft.shopHoursNote;
   els.crowdNoteInput.value = runtime.recommendationPreferencesDraft.crowdNote;
   els.recommendationSettingsMessage.textContent = state.recommendationSettingsMessage;
   els.recommendationSettingsMessage.classList.toggle("error", state.recommendationSettingsMessageIsError === true);
@@ -1166,7 +1202,6 @@ function saveSettings() {
 function saveRecommendationSettings() {
   const nextPreferences = normalizeRecommendationPreferences({
     ...getRecommendationPreferencesDraft(),
-    shopHoursNote: els.shopHoursNoteInput.value,
     crowdNote: els.crowdNoteInput.value,
   });
 
@@ -1766,6 +1801,31 @@ function renderRecommendationHistory() {
     fragment.appendChild(wrapper);
   });
   els.recommendationHistoryList.appendChild(fragment);
+}
+
+function renderHomeRecommendationHistory() {
+  els.homeRecommendationHistory.replaceChildren();
+
+  if (state.recommendationHistory.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "まだおすすめ履歴はありません。";
+    els.homeRecommendationHistory.appendChild(empty);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  state.recommendationHistory.slice(0, 3).forEach((entry) => {
+    const row = document.createElement("div");
+    row.className = "metric-row";
+    const label = document.createElement("span");
+    label.textContent = `${formatDateTime(entry.createdAtEpochMs)} / ${tierLabel(entry.tier)}`;
+    const value = document.createElement("span");
+    value.textContent = formatYen(entry.totalYen);
+    row.append(label, value);
+    fragment.appendChild(row);
+  });
+  els.homeRecommendationHistory.appendChild(fragment);
 }
 
 function renderSimpleList(container, values, emptyMessage) {

@@ -206,12 +206,17 @@ h3 {
 .recommendation-note-card .muted {
   color: rgba(255, 245, 232, 0.92);
   line-height: 1.55;
+  white-space: pre-line;
 }
 
 .detail-meta {
   margin: 10px 2px 0;
   font-size: 0.82rem;
   color: rgba(255, 229, 204, 0.72);
+}
+
+.recommendation-lead {
+  white-space: pre-line;
 }
 
 .highlight-list {
