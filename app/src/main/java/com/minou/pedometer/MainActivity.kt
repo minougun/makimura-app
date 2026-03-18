@@ -1450,16 +1450,6 @@ private fun SettingsTab(
 private fun RecommendationPreferencesCard(
     recommendationPreferences: RecommendationPreferences,
 ) {
-    var selectedAppetite by remember(recommendationPreferences) { mutableStateOf(recommendationPreferences.appetiteLevel) }
-    var selectedMood by remember(recommendationPreferences) { mutableStateOf(recommendationPreferences.moodPreference) }
-    var excludedToppings by remember(recommendationPreferences) {
-        mutableStateOf(recommendationPreferences.excludedToppings)
-    }
-    var crowdNote by remember(recommendationPreferences) {
-        mutableStateOf(recommendationPreferences.crowdNote)
-    }
-    var recommendationSaveMessage by remember { mutableStateOf<String?>(null) }
-
     AppCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
@@ -1474,8 +1464,12 @@ private fun RecommendationPreferencesCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AppetiteLevel.entries.forEach { level ->
                     FilterChip(
-                        selected = selectedAppetite == level,
-                        onClick = { selectedAppetite = level },
+                        selected = recommendationPreferences.appetiteLevel == level,
+                        onClick = {
+                            MetricsRepository.updateRecommendationPreferences(
+                                recommendationPreferences.copy(appetiteLevel = level)
+                            )
+                        },
                         label = { Text(appetiteLabel(level)) },
                     )
                 }
@@ -1485,8 +1479,12 @@ private fun RecommendationPreferencesCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MoodPreference.entries.forEach { mood ->
                     FilterChip(
-                        selected = selectedMood == mood,
-                        onClick = { selectedMood = mood },
+                        selected = recommendationPreferences.moodPreference == mood,
+                        onClick = {
+                            MetricsRepository.updateRecommendationPreferences(
+                                recommendationPreferences.copy(moodPreference = mood)
+                            )
+                        },
                         label = { Text(moodLabel(mood)) },
                     )
                 }
@@ -1496,52 +1494,26 @@ private fun RecommendationPreferencesCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("ねぎ", "ニンニク", "コーン", "煮卵", "メンマ", "キムチ", "納豆").forEach { name ->
                     FilterChip(
-                        selected = excludedToppings.contains(name),
+                        selected = recommendationPreferences.excludedToppings.contains(name),
                         onClick = {
-                            excludedToppings = if (excludedToppings.contains(name)) {
-                                excludedToppings - name
+                            val nextExcluded = if (recommendationPreferences.excludedToppings.contains(name)) {
+                                recommendationPreferences.excludedToppings - name
                             } else {
-                                excludedToppings + name
+                                recommendationPreferences.excludedToppings + name
                             }
+                            MetricsRepository.updateRecommendationPreferences(
+                                recommendationPreferences.copy(excludedToppings = nextExcluded)
+                            )
                         },
                         label = { Text(name) },
                     )
                 }
             }
-
-            OutlinedTextField(
-                value = crowdNote,
-                onValueChange = { value -> crowdNote = value.take(200) },
-                label = { Text("混雑メモ") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-
             Text(
-                "Google Maps の公式 API では Popular Times を直接取得できないため、ここでは手動メモで管理します。",
+                "選んだ内容はすぐおすすめに反映されます。混雑メモは設定タブから更新できます。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
-
-            Button(
-                onClick = {
-                    MetricsRepository.updateRecommendationPreferences(
-                        RecommendationPreferences(
-                            excludedToppings = excludedToppings,
-                            appetiteLevel = selectedAppetite,
-                            moodPreference = selectedMood,
-                            crowdNote = crowdNote,
-                        )
-                    )
-                    recommendationSaveMessage = "おすすめの好み設定を保存しました。"
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("おすすめ設定を保存")
-            }
-
-            recommendationSaveMessage?.let { message ->
-                Text(message, color = MaterialTheme.colorScheme.primary)
-            }
         }
     }
 }

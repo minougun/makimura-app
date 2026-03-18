@@ -291,8 +291,6 @@ state.weatherMessage = "";
 state.weatherMessageIsError = false;
 state.weatherLoading = false;
 state.showDetailedReason = false;
-state.recommendationSettingsMessage = "";
-state.recommendationSettingsMessageIsError = false;
 
 if (state.pendingStorageMigration) {
   persistState();
@@ -316,7 +314,6 @@ const runtime = {
     recommendationItemsKey: "",
     currentOrderKey: "",
   },
-  recommendationPreferencesDraft: null,
 };
 
 let persistTimer = 0;
@@ -418,8 +415,6 @@ const els = {
   appetiteChips: document.getElementById("appetite-chips"),
   moodChips: document.getElementById("mood-chips"),
   crowdNoteInput: document.getElementById("crowd-note-input"),
-  saveRecommendationSettingsButton: document.getElementById("save-recommendation-settings"),
-  recommendationSettingsMessage: document.getElementById("recommendation-settings-message"),
   saveCrowdNoteButton: document.getElementById("save-crowd-note"),
   crowdNoteMessage: document.getElementById("crowd-note-message"),
   persistOptIn: document.getElementById("persist-opt-in"),
@@ -575,10 +570,6 @@ function bindEvents() {
 
   els.saveSettingsButton.addEventListener("click", () => {
     saveSettings();
-  });
-
-  els.saveRecommendationSettingsButton.addEventListener("click", () => {
-    saveRecommendationSettings();
   });
 
   els.saveCrowdNoteButton.addEventListener("click", () => {
@@ -864,17 +855,16 @@ function buildRecommendationSettingsControls() {
     chip.dataset.excludeTopping = name;
     chip.textContent = name;
     chip.addEventListener("click", () => {
-      const current = new Set(getRecommendationPreferencesDraft().excludedToppings);
+      const current = new Set(state.recommendationPreferences.excludedToppings);
       if (current.has(name)) {
         current.delete(name);
       } else {
         current.add(name);
       }
-      runtime.recommendationPreferencesDraft = {
-        ...getRecommendationPreferencesDraft(),
+      applyRecommendationPreferences({
+        ...state.recommendationPreferences,
         excludedToppings: [...current],
-      };
-      renderRecommendationPreferenceChips();
+      });
     });
     els.excludeToppingChips.appendChild(chip);
   });
@@ -886,11 +876,10 @@ function buildRecommendationSettingsControls() {
     chip.dataset.appetite = level;
     chip.textContent = appetiteLabel(level);
     chip.addEventListener("click", () => {
-      runtime.recommendationPreferencesDraft = {
-        ...getRecommendationPreferencesDraft(),
+      applyRecommendationPreferences({
+        ...state.recommendationPreferences,
         appetiteLevel: level,
-      };
-      renderRecommendationPreferenceChips();
+      });
     });
     els.appetiteChips.appendChild(chip);
   });
@@ -902,37 +891,28 @@ function buildRecommendationSettingsControls() {
     chip.dataset.mood = mood;
     chip.textContent = moodLabel(mood);
     chip.addEventListener("click", () => {
-      runtime.recommendationPreferencesDraft = {
-        ...getRecommendationPreferencesDraft(),
+      applyRecommendationPreferences({
+        ...state.recommendationPreferences,
         moodPreference: mood,
-      };
-      renderRecommendationPreferenceChips();
+      });
     });
     els.moodChips.appendChild(chip);
   });
 }
 
 function renderRecommendationPreferenceChips() {
-  const draft = getRecommendationPreferencesDraft();
   els.excludeToppingChips.querySelectorAll("[data-exclude-topping]").forEach((chip) => {
     chip.classList.toggle(
       "is-active",
-      draft.excludedToppings.includes(chip.dataset.excludeTopping),
+      state.recommendationPreferences.excludedToppings.includes(chip.dataset.excludeTopping),
     );
   });
   els.appetiteChips.querySelectorAll("[data-appetite]").forEach((chip) => {
-    chip.classList.toggle("is-active", chip.dataset.appetite === draft.appetiteLevel);
+    chip.classList.toggle("is-active", chip.dataset.appetite === state.recommendationPreferences.appetiteLevel);
   });
   els.moodChips.querySelectorAll("[data-mood]").forEach((chip) => {
-    chip.classList.toggle("is-active", chip.dataset.mood === draft.moodPreference);
+    chip.classList.toggle("is-active", chip.dataset.mood === state.recommendationPreferences.moodPreference);
   });
-}
-
-function getRecommendationPreferencesDraft() {
-  if (!runtime.recommendationPreferencesDraft) {
-    runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(state.recommendationPreferences);
-  }
-  return runtime.recommendationPreferencesDraft;
 }
 
 function toggleOrderItem(name) {
@@ -1147,11 +1127,8 @@ function renderSettingsFromState() {
     : "";
 
   els.persistOptIn.checked = state.persistOptIn === true;
-  runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(state.recommendationPreferences);
   renderRecommendationPreferenceChips();
   els.crowdNoteInput.value = state.recommendationPreferences.crowdNote;
-  els.recommendationSettingsMessage.textContent = state.recommendationSettingsMessage;
-  els.recommendationSettingsMessage.classList.toggle("error", state.recommendationSettingsMessageIsError === true);
   els.crowdNoteMessage.textContent = state.crowdNoteMessage ?? "";
   els.crowdNoteMessage.classList.toggle("error", state.crowdNoteMessageIsError === true);
   renderPersistenceModeNote();
@@ -1207,34 +1184,22 @@ function saveSettings() {
   renderSettingsPreview();
 }
 
-function saveRecommendationSettings() {
-  const nextPreferences = normalizeRecommendationPreferences({
-    ...getRecommendationPreferencesDraft(),
-    crowdNote: state.recommendationPreferences.crowdNote,
+function saveCrowdNote() {
+  applyRecommendationPreferences({
+    ...state.recommendationPreferences,
+    crowdNote: els.crowdNoteInput.value,
   });
+  state.crowdNoteMessage = "混雑メモを保存しました。";
+  state.crowdNoteMessageIsError = false;
+  renderSettingsFromState();
+}
 
-  state.recommendationPreferences = nextPreferences;
-  runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(nextPreferences);
-  state.recommendationSettingsMessage = "おすすめの好み設定を保存しました。";
-  state.recommendationSettingsMessageIsError = false;
+function applyRecommendationPreferences(nextPreferences) {
+  state.recommendationPreferences = normalizeRecommendationPreferences(nextPreferences);
   schedulePersist(true);
   renderHome();
   renderOrder();
   if (state.activitySubView === "history") renderHistory();
-  renderSettingsFromState();
-}
-
-function saveCrowdNote() {
-  state.recommendationPreferences = normalizeRecommendationPreferences({
-    ...state.recommendationPreferences,
-    crowdNote: els.crowdNoteInput.value,
-  });
-  runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences(state.recommendationPreferences);
-  state.crowdNoteMessage = "混雑メモを保存しました。";
-  state.crowdNoteMessageIsError = false;
-  schedulePersist(true);
-  renderHome();
-  renderSettingsFromState();
 }
 
 function updatePersistencePreference(enabled) {
@@ -1283,12 +1248,9 @@ function clearLocalData() {
   state.sensorSupported = true;
   state.persistOptIn = false;
   state.showDetailedReason = false;
-  state.recommendationSettingsMessage = "";
-  state.recommendationSettingsMessageIsError = false;
   state.crowdNoteMessage = "";
   state.crowdNoteMessageIsError = false;
   resetCadenceRuntime();
-  runtime.recommendationPreferencesDraft = normalizeRecommendationPreferences();
   runtime.recommendationCacheKey = "";
   runtime.recommendationCacheValue = null;
 
