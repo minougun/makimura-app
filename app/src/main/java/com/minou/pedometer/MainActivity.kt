@@ -635,7 +635,6 @@ private fun HistoryTab(
         HistoryAnalytics.filterByLastDays(
             history = history,
             days = selectedRange.days,
-            todayEpoch = currentDayEpoch(),
         )
     }
     val canExportCurrentRange = filteredHistory.isNotEmpty()
@@ -1659,7 +1658,7 @@ private fun RecommendationCard(
             FilterChip(
                 selected = showDetailedReason,
                 onClick = { showDetailedReason = !showDetailedReason },
-                label = { Text(if (showDetailedReason) "詳しく見る: ON" else "ひとことで見る") },
+                label = { Text(if (showDetailedReason) "ひとことで見る" else "詳しく見る") },
             )
             RecommendationInfoPanel(
                 title = "提案理由",
@@ -1729,6 +1728,9 @@ private fun buildDetailedRecommendationReason(
     lines += "空腹度は「${appetiteLabel(preferences.appetiteLevel)}」、気分は「${moodLabel(preferences.moodPreference)}」として反映しています。"
     if (preferences.excludedToppings.isNotEmpty()) {
         lines += "苦手設定の ${preferences.excludedToppings.sorted().joinToString(" / ")} は候補から外しました。"
+    }
+    if (preferences.crowdNote.isNotBlank()) {
+        lines += preferences.crowdNote.trim()
     }
     lines += "最終的には ${recommendation.items.joinToString(" + ") { it.name }} を提案し、合計は ${formatYen(recommendation.totalYen)} です。"
     return lines.joinToString("\n")
