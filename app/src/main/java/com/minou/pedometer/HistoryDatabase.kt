@@ -61,6 +61,20 @@ fun TodayMetrics.toHistoryEntity(): DailyHistoryEntity {
     )
 }
 
+fun DailyHistory.toHistoryEntity(): DailyHistoryEntity {
+    return DailyHistoryEntity(
+        dayEpoch = dayEpoch,
+        steps = steps,
+        totalDistanceMeters = totalDistanceMeters,
+        totalCaloriesKcal = totalCaloriesKcal,
+        movingDurationMs = movingDurationMs,
+        briskDistanceMeters = briskDistanceMeters,
+        briskDurationMs = briskDurationMs,
+        runningDistanceMeters = runningDistanceMeters,
+        runningDurationMs = runningDurationMs,
+    )
+}
+
 fun DailyHistoryEntity.toModel(): DailyHistory {
     return DailyHistory(
         dayEpoch = dayEpoch,

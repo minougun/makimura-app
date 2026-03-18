@@ -1,8 +1,38 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+}
+
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+fun keystoreValue(name: String): String? =
+    keystoreProperties.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() }
+
+val hasLocalSigningConfig = listOf(
+    "storeFile",
+    "storePassword",
+    "keyAlias",
+    "keyPassword",
+).all { keystoreValue(it) != null }
+
+val isReleaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
+    val normalized = taskName.lowercase()
+    normalized.contains("release") || normalized.contains("bundle")
+}
+
+if (isReleaseTaskRequested && !hasLocalSigningConfig) {
+    throw GradleException(
+        "Release build requires keystore.properties with storeFile/storePassword/keyAlias/keyPassword."
+    )
 }
 
 android {
@@ -13,15 +43,35 @@ android {
         applicationId = "com.minou.pedometer"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 20260306
+        versionName = "2026.03.06-web"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasLocalSigningConfig) {
+            create("localUnified") {
+                storeFile = file(requireNotNull(keystoreValue("storeFile")))
+                storePassword = requireNotNull(keystoreValue("storePassword"))
+                keyAlias = requireNotNull(keystoreValue("keyAlias"))
+                keyPassword = requireNotNull(keystoreValue("keyPassword"))
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (hasLocalSigningConfig) {
+                signingConfig = signingConfigs.getByName("localUnified")
+            }
+        }
+
         release {
             isMinifyEnabled = false
+            if (hasLocalSigningConfig) {
+                signingConfig = signingConfigs.getByName("localUnified")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

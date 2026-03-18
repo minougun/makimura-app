@@ -9,3 +9,9 @@
 /dist/
 /.android-sdk/
 /.tooling/
+/.claude/
+/.kotlin/
+/local.properties.wsl
+keystore.properties
+*.jks
+*.keystore

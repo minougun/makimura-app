@@ -39,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.lightColorScheme
@@ -63,7 +64,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -140,12 +144,15 @@ private fun PedometerTheme(content: @Composable () -> Unit) {
 @Composable
 private fun PedometerScreen() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by MetricsRepository.uiState.collectAsStateWithLifecycle()
-    val recommendation = remember(uiState.metrics, uiState.weatherContext) {
+    val recommendation = remember(
+        uiState.metrics.steps,
+        uiState.weatherContext.condition,
+        uiState.weatherContext.temperatureC,
+    ) {
         RamenRecommendationEngine.recommend(uiState.metrics, uiState.weatherContext)
     }
-    var autoWeatherRefreshRunning by remember { mutableStateOf(false) }
-    var initialWeatherRefreshAttempted by rememberSaveable { mutableStateOf(false) }
 
     val permissions = remember { requiredPermissions() }
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.HOME) }
@@ -164,36 +171,34 @@ private fun PedometerScreen() {
         }
     }
 
-    LaunchedEffect(uiState.weatherCity, uiState.weatherUpdatedAtEpochMs) {
-        while (isActive) {
-            val latestState = MetricsRepository.uiState.value
-            val mustSwitchToShopAddress = latestState.weatherCity != MakimuraShop.ADDRESS_LABEL
-            val shouldRefreshNow = !initialWeatherRefreshAttempted ||
-                mustSwitchToShopAddress ||
-                WeatherRefreshPolicy.shouldAutoRefresh(
-                    updatedAtEpochMs = latestState.weatherUpdatedAtEpochMs,
-                    staleDurationMs = MakimuraShop.WEATHER_REFRESH_INTERVAL_MS,
-                )
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) {
+                val latestState = MetricsRepository.uiState.value
+                val shouldRefreshNow =
+                    latestState.weatherCity != MakimuraShop.ADDRESS_LABEL ||
+                        WeatherRefreshPolicy.shouldAutoRefresh(
+                            updatedAtEpochMs = latestState.weatherUpdatedAtEpochMs,
+                            staleDurationMs = MakimuraShop.WEATHER_REFRESH_INTERVAL_MS,
+                        )
 
-            if (!autoWeatherRefreshRunning && shouldRefreshNow) {
-                autoWeatherRefreshRunning = true
-                val result = withContext(Dispatchers.IO) {
-                    WeatherAutoFetch.fetchForMakimuraShop()
+                if (shouldRefreshNow) {
+                    val result = withContext(Dispatchers.IO) {
+                        WeatherAutoFetch.fetchForMakimuraShop()
+                    }
+                    result.onSuccess { fetched ->
+                        MetricsRepository.updateWeatherCity(MakimuraShop.ADDRESS_LABEL)
+                        MetricsRepository.updateWeatherContext(
+                            weatherContext = fetched.weatherContext,
+                            updatedAtEpochMs = System.currentTimeMillis(),
+                        )
+                    }.onFailure { error ->
+                        Log.w(WEATHER_INPUT_TAG, "Auto weather refresh failed", error)
+                    }
                 }
-                result.onSuccess { fetched ->
-                    MetricsRepository.updateWeatherCity(MakimuraShop.ADDRESS_LABEL)
-                    MetricsRepository.updateWeatherContext(
-                        weatherContext = fetched.weatherContext,
-                        updatedAtEpochMs = System.currentTimeMillis(),
-                    )
-                }.onFailure { error ->
-                    Log.w(WEATHER_INPUT_TAG, "Auto weather refresh failed", error)
-                }
-                initialWeatherRefreshAttempted = true
-                autoWeatherRefreshRunning = false
+
+                delay(60_000L)
             }
-
-            delay(60_000L)
         }
     }
 
@@ -281,6 +286,7 @@ private fun PedometerScreen() {
                         weatherContext = uiState.weatherContext,
                         weatherCity = uiState.weatherCity,
                         weatherUpdatedAtEpochMs = uiState.weatherUpdatedAtEpochMs,
+                        persistenceEnabled = uiState.persistenceEnabled,
                     )
                 }
             }
@@ -311,7 +317,11 @@ private fun HomeTabContent(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "運動量 ${uiState.metrics.steps}歩 と ${weatherLabel(uiState.weatherContext.condition)} ${uiState.weatherContext.temperatureC}°C から提案",
+                    text = RamenRecommendationEngine.homeSummary(
+                        metrics = uiState.metrics,
+                        weatherContext = uiState.weatherContext,
+                        recommendation = recommendation,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Button(
@@ -416,12 +426,11 @@ private fun OrderTab(
                             selected = selected,
                             onClick = {
                                 if (item.required) return@FilterChip
-                                val next = if (selected) {
-                                    normalizedSelection - item.name
-                                } else {
-                                    normalizedSelection + item.name
-                                }
-                                onSelectedItemNamesChange(next + RamenMenuCatalog.requiredItemNames)
+                                val next = RamenMenuCatalog.toggleSelection(
+                                    selectedNames = normalizedSelection,
+                                    targetName = item.name,
+                                )
+                                onSelectedItemNamesChange(next)
                             },
                             label = { Text("${item.name} ${formatYen(item.priceYen)}") },
                         )
@@ -822,8 +831,10 @@ private fun SettingsTab(
     weatherContext: WeatherContext,
     weatherCity: String,
     weatherUpdatedAtEpochMs: Long,
+    persistenceEnabled: Boolean,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var heightInput by remember(profile) { mutableStateOf(profile.heightCm.toString()) }
     var weightInput by remember(profile) { mutableStateOf(profile.weightKg?.let(::formatWeightInput) ?: "") }
     var selectedSex by remember(profile) { mutableStateOf(profile.sex) }
@@ -837,6 +848,7 @@ private fun SettingsTab(
     var weatherLoading by remember { mutableStateOf(false) }
     var weatherSaveMessage by remember { mutableStateOf<String?>(null) }
     var weatherMessageIsError by remember { mutableStateOf(false) }
+    var persistenceSaveMessage by remember { mutableStateOf<String?>(null) }
 
     val previewProfile = remember(heightInput, weightInput, selectedSex, strideScale) {
         UserProfile(
@@ -1166,6 +1178,86 @@ private fun SettingsTab(
                 }
             }
         }
+
+        AppCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("保存設定", style = MaterialTheme.typography.titleMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("この端末にデータを保存する")
+                    Switch(
+                        checked = persistenceEnabled,
+                        onCheckedChange = { enabled ->
+                            MetricsRepository.setPersistenceEnabled(enabled)
+                            persistenceSaveMessage = if (enabled) {
+                                "この端末への保存を有効にしました。共有端末ではオフを推奨します。"
+                            } else {
+                                "この端末への永続保存を無効にしました。以後はアプリ起動中だけ保持します。"
+                            }
+                        },
+                    )
+                }
+                Text(
+                    text = if (persistenceEnabled) {
+                        "永続保存: ON。履歴と設定をこの端末に保存します。"
+                    } else {
+                        "永続保存: OFF。アプリを終了すると履歴と設定を破棄します。"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = "共有端末ではオフのまま使うことを推奨します。",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                persistenceSaveMessage?.let { message ->
+                    Text(message, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+
+        AppCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Button(
+                    onClick = {
+                        TrackingService.stop(context)
+                        MetricsRepository.clearAllData()
+                        heightInput = UserProfile().heightCm.toString()
+                        weightInput = ""
+                        selectedSex = UserSex.OTHER
+                        strideScale = 1.0f
+                        calibrationStepsInput = ""
+                        calibrationDistanceInput = ""
+                        selectedWeather = WeatherCondition.SUNNY
+                        temperatureInput = WeatherContext().temperatureC.toString()
+                        weatherCityInput = MakimuraShop.ADDRESS_LABEL
+                        saveMessage = null
+                        weatherSaveMessage = null
+                        weatherMessageIsError = false
+                        persistenceSaveMessage = "保存データを削除しました。"
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("保存データを削除")
+                }
+                Text(
+                    text = "共有端末では使用後に保存データの削除を推奨します。",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
     }
 }
 
@@ -1271,7 +1363,7 @@ private fun RecommendationCard(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "麺家まきむら 今日のおすすめ",
+                text = "本日のおすすめ",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )

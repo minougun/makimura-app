@@ -18,6 +18,7 @@ object MetricsRepository {
     private const val PREFS_NAME = "pedometer_metrics"
     private const val HISTORY_DB_NAME = "pedometer_history.db"
     private const val HISTORY_LIMIT = 30
+    private const val KEY_PERSISTENCE_ENABLED = "persistence_enabled"
 
     private const val KEY_DAY = "day_epoch"
     private const val KEY_STEPS = "steps"
@@ -62,6 +63,11 @@ object MetricsRepository {
 
     private var pendingMetrics: TodayMetrics? = null
     private var metricsDirty = false
+    private var persistenceEnabled = false
+    private var historyObserverStarted = false
+    private var stepCounterBaselineDay: Long? = null
+    private var stepCounterBaselineValue: Float? = null
+    private var inMemoryHistory: List<DailyHistory> = emptyList()
 
     private val _uiState = MutableStateFlow(TrackingUiState())
     val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
@@ -76,31 +82,50 @@ object MetricsRepository {
         database = Room.databaseBuilder(appContext, HistoryDatabase::class.java, HISTORY_DB_NAME)
             .fallbackToDestructiveMigration()
             .build()
-        flushPendingArchiveIfNeeded()
+        persistenceEnabled = prefs.getBoolean(KEY_PERSISTENCE_ENABLED, false)
 
-        val profile = loadUserProfileFromDisk()
-        val weatherContext = loadWeatherContextFromDisk()
-        val metrics = loadMetricsFromDisk()
+        if (persistenceEnabled) {
+            flushPendingArchiveIfNeeded()
+        } else {
+            clearPersistedStateLocked(clearPreference = false)
+        }
+
+        val profile = if (persistenceEnabled) loadUserProfileFromDisk() else UserProfile()
+        val weatherContext = if (persistenceEnabled) loadWeatherContextFromDisk() else WeatherContext()
+        val metrics = if (persistenceEnabled) loadMetricsFromDisk() else TodayMetrics(dayEpoch = currentDayEpoch())
+        val weatherUpdatedAt = if (persistenceEnabled) prefs.getLong(KEY_WEATHER_UPDATED_AT, 0L) else 0L
+        val weatherCity = if (persistenceEnabled) loadWeatherCityFromDisk() else MakimuraShop.ADDRESS_LABEL
+        val isTracking = if (persistenceEnabled) prefs.getBoolean(KEY_IS_TRACKING, false) else false
+        val sensorSupported = if (persistenceEnabled) prefs.getBoolean(KEY_SENSOR_SUPPORTED, true) else true
 
         pendingMetrics = metrics
         metricsDirty = false
+        inMemoryHistory = emptyList()
+        stepCounterBaselineDay = if (persistenceEnabled && prefs.contains(KEY_BASELINE_VALUE)) {
+            prefs.getLong(KEY_BASELINE_DAY, Long.MIN_VALUE)
+        } else {
+            null
+        }
+        stepCounterBaselineValue = if (persistenceEnabled && prefs.contains(KEY_BASELINE_VALUE)) {
+            prefs.getFloat(KEY_BASELINE_VALUE, 0f)
+        } else {
+            null
+        }
 
         _uiState.value = TrackingUiState(
             metrics = metrics,
+            history = inMemoryHistory,
             userProfile = profile,
             weatherContext = weatherContext,
-            weatherCity = loadWeatherCityFromDisk(),
-            weatherUpdatedAtEpochMs = prefs.getLong(KEY_WEATHER_UPDATED_AT, 0L),
-            isTracking = prefs.getBoolean(KEY_IS_TRACKING, false),
-            sensorSupported = prefs.getBoolean(KEY_SENSOR_SUPPORTED, true),
+            weatherCity = weatherCity,
+            weatherUpdatedAtEpochMs = weatherUpdatedAt,
+            isTracking = isTracking,
+            sensorSupported = sensorSupported,
+            persistenceEnabled = persistenceEnabled,
         )
 
-        scope.launch {
-            database.dailyHistoryDao().observeRecent(HISTORY_LIMIT).collect { rows ->
-                _uiState.update { state ->
-                    state.copy(history = rows.map { it.toModel() })
-                }
-            }
+        if (persistenceEnabled) {
+            startHistoryObserverIfNeeded()
         }
     }
 
@@ -130,7 +155,9 @@ object MetricsRepository {
         if (!metricsDirty) return
 
         val metrics = pendingMetrics ?: return
-        saveMetricsToDisk(metrics)
+        if (persistenceEnabled) {
+            saveMetricsToDisk(metrics)
+        }
         metricsDirty = false
     }
 
@@ -148,7 +175,9 @@ object MetricsRepository {
         val reset = TodayMetrics(dayEpoch = dayEpoch, lastUpdatedEpochMs = System.currentTimeMillis())
         pendingMetrics = reset
         metricsDirty = true
-        saveMetricsToDisk(reset)
+        if (persistenceEnabled) {
+            saveMetricsToDisk(reset)
+        }
         metricsDirty = false
 
         _uiState.update { it.copy(metrics = reset) }
@@ -156,37 +185,53 @@ object MetricsRepository {
 
     fun setTracking(isTracking: Boolean) {
         ensureInitialized()
-        prefs.edit().putBoolean(KEY_IS_TRACKING, isTracking).apply()
+        if (_uiState.value.isTracking == isTracking) return
+        if (persistenceEnabled) {
+            prefs.edit().putBoolean(KEY_IS_TRACKING, isTracking).apply()
+        }
         _uiState.update { it.copy(isTracking = isTracking) }
     }
 
     fun setSensorSupported(supported: Boolean) {
         ensureInitialized()
-        prefs.edit().putBoolean(KEY_SENSOR_SUPPORTED, supported).apply()
+        if (_uiState.value.sensorSupported == supported) return
+        if (persistenceEnabled) {
+            prefs.edit().putBoolean(KEY_SENSOR_SUPPORTED, supported).apply()
+        }
         _uiState.update { it.copy(sensorSupported = supported) }
     }
 
     fun getStepCounterBaseline(dayEpoch: Long): Float? {
         ensureInitialized()
-        val storedDay = prefs.getLong(KEY_BASELINE_DAY, Long.MIN_VALUE)
-        if (storedDay != dayEpoch || !prefs.contains(KEY_BASELINE_VALUE)) return null
-        return prefs.getFloat(KEY_BASELINE_VALUE, 0f)
+        return if (stepCounterBaselineDay == dayEpoch) {
+            stepCounterBaselineValue
+        } else {
+            null
+        }
     }
 
     fun saveStepCounterBaseline(dayEpoch: Long, baseline: Float) {
         ensureInitialized()
-        prefs.edit()
-            .putLong(KEY_BASELINE_DAY, dayEpoch)
-            .putFloat(KEY_BASELINE_VALUE, baseline)
-            .apply()
+        stepCounterBaselineDay = dayEpoch
+        stepCounterBaselineValue = baseline
+        if (persistenceEnabled) {
+            prefs.edit()
+                .putLong(KEY_BASELINE_DAY, dayEpoch)
+                .putFloat(KEY_BASELINE_VALUE, baseline)
+                .apply()
+        }
     }
 
     fun clearStepCounterBaseline() {
         ensureInitialized()
-        prefs.edit()
-            .remove(KEY_BASELINE_DAY)
-            .remove(KEY_BASELINE_VALUE)
-            .apply()
+        stepCounterBaselineDay = null
+        stepCounterBaselineValue = null
+        if (persistenceEnabled) {
+            prefs.edit()
+                .remove(KEY_BASELINE_DAY)
+                .remove(KEY_BASELINE_VALUE)
+                .apply()
+        }
     }
 
     fun updateUserProfile(profile: UserProfile) {
@@ -197,17 +242,20 @@ object MetricsRepository {
             strideScale = profile.normalizedStrideScale,
             weightKg = profile.normalizedWeightKg,
         )
+        if (_uiState.value.userProfile == normalized) return
 
-        val editor = prefs.edit()
-            .putInt(KEY_PROFILE_HEIGHT, normalized.heightCm)
-            .putString(KEY_PROFILE_SEX, normalized.sex.name)
-            .putDouble(KEY_PROFILE_STRIDE_SCALE, normalized.strideScale)
-        if (normalized.weightKg == null) {
-            editor.remove(KEY_PROFILE_WEIGHT)
-        } else {
-            editor.putDouble(KEY_PROFILE_WEIGHT, normalized.weightKg)
+        if (persistenceEnabled) {
+            val editor = prefs.edit()
+                .putInt(KEY_PROFILE_HEIGHT, normalized.heightCm)
+                .putString(KEY_PROFILE_SEX, normalized.sex.name)
+                .putDouble(KEY_PROFILE_STRIDE_SCALE, normalized.strideScale)
+            if (normalized.weightKg == null) {
+                editor.remove(KEY_PROFILE_WEIGHT)
+            } else {
+                editor.putDouble(KEY_PROFILE_WEIGHT, normalized.weightKg)
+            }
+            editor.apply()
         }
-        editor.apply()
 
         _uiState.update { it.copy(userProfile = normalized) }
     }
@@ -218,12 +266,21 @@ object MetricsRepository {
         val normalized = weatherContext.copy(
             temperatureC = weatherContext.normalizedTemperatureC,
         )
+        val currentState = _uiState.value
+        if (
+            currentState.weatherContext == normalized &&
+            currentState.weatherUpdatedAtEpochMs == updatedAtEpochMs
+        ) {
+            return
+        }
 
-        prefs.edit()
-            .putString(KEY_WEATHER_CONDITION, normalized.condition.name)
-            .putInt(KEY_WEATHER_TEMPERATURE, normalized.temperatureC)
-            .putLong(KEY_WEATHER_UPDATED_AT, updatedAtEpochMs)
-            .apply()
+        if (persistenceEnabled) {
+            prefs.edit()
+                .putString(KEY_WEATHER_CONDITION, normalized.condition.name)
+                .putInt(KEY_WEATHER_TEMPERATURE, normalized.temperatureC)
+                .putLong(KEY_WEATHER_UPDATED_AT, updatedAtEpochMs)
+                .apply()
+        }
 
         _uiState.update {
             it.copy(
@@ -237,22 +294,69 @@ object MetricsRepository {
         ensureInitialized()
 
         val normalized = city.trim().ifBlank { MakimuraShop.ADDRESS_LABEL }.take(120)
-        prefs.edit()
-            .putString(KEY_WEATHER_CITY, normalized)
-            .apply()
+        if (_uiState.value.weatherCity == normalized) return
+        if (persistenceEnabled) {
+            prefs.edit()
+                .putString(KEY_WEATHER_CITY, normalized)
+                .apply()
+        }
 
         _uiState.update { it.copy(weatherCity = normalized) }
+    }
+
+    fun setPersistenceEnabled(enabled: Boolean) {
+        ensureInitialized()
+        if (persistenceEnabled == enabled) return
+
+        persistenceEnabled = enabled
+        prefs.edit().putBoolean(KEY_PERSISTENCE_ENABLED, enabled).apply()
+
+        if (enabled) {
+            persistCurrentStateToDisk()
+            startHistoryObserverIfNeeded()
+        } else {
+            clearPersistedStateLocked(clearPreference = false)
+        }
+
+        _uiState.update { it.copy(persistenceEnabled = enabled) }
+    }
+
+    fun clearAllData() {
+        ensureInitialized()
+
+        persistenceEnabled = false
+        clearPersistedStateLocked(clearPreference = false)
+        pendingMetrics = TodayMetrics(dayEpoch = currentDayEpoch())
+        metricsDirty = false
+        inMemoryHistory = emptyList()
+        stepCounterBaselineDay = null
+        stepCounterBaselineValue = null
+
+        _uiState.value = TrackingUiState(
+            metrics = TodayMetrics(dayEpoch = currentDayEpoch()),
+            history = emptyList(),
+            userProfile = UserProfile(),
+            weatherContext = WeatherContext(),
+            weatherCity = MakimuraShop.ADDRESS_LABEL,
+            weatherUpdatedAtEpochMs = 0L,
+            isTracking = false,
+            sensorSupported = true,
+            persistenceEnabled = false,
+        )
     }
 
     @VisibleForTesting
     suspend fun replaceHistoryForTesting(history: List<DailyHistory>) {
         ensureInitialized()
 
+        inMemoryHistory = history.sortedByDescending { it.dayEpoch }.take(HISTORY_LIMIT)
+        _uiState.update { it.copy(history = inMemoryHistory) }
+
         val dao = database.dailyHistoryDao()
         dao.clearAll()
 
-        if (history.isNotEmpty()) {
-            dao.upsertAll(history.map { day ->
+        if (inMemoryHistory.isNotEmpty()) {
+            dao.upsertAll(inMemoryHistory.map { day ->
                 DailyHistoryEntity(
                     dayEpoch = day.dayEpoch,
                     steps = day.steps,
@@ -276,13 +380,12 @@ object MetricsRepository {
         val reset = TodayMetrics(dayEpoch = dayEpoch, lastUpdatedEpochMs = System.currentTimeMillis())
         pendingMetrics = reset
         metricsDirty = true
-        saveMetricsToDisk(reset)
+        persistenceEnabled = false
+        clearPersistedStateLocked(clearPreference = false)
         metricsDirty = false
-
-        prefs.edit()
-            .putBoolean(KEY_IS_TRACKING, false)
-            .putBoolean(KEY_SENSOR_SUPPORTED, true)
-            .apply()
+        inMemoryHistory = emptyList()
+        stepCounterBaselineDay = null
+        stepCounterBaselineValue = null
 
         _uiState.update {
             it.copy(
@@ -290,6 +393,7 @@ object MetricsRepository {
                 isTracking = false,
                 sensorSupported = true,
                 history = emptyList(),
+                persistenceEnabled = false,
             )
         }
     }
@@ -384,6 +488,16 @@ object MetricsRepository {
     private fun archiveSafelyIfNeeded(metrics: TodayMetrics) {
         if (!metrics.hasActivity()) return
 
+        if (!persistenceEnabled) {
+            inMemoryHistory = upsertRecentHistory(
+                history = inMemoryHistory,
+                day = metrics.toHistoryEntity().toModel(),
+                limit = HISTORY_LIMIT,
+            )
+            _uiState.update { it.copy(history = inMemoryHistory) }
+            return
+        }
+
         savePendingArchive(metrics)
 
         scope.launch {
@@ -425,6 +539,7 @@ object MetricsRepository {
     }
 
     private fun flushPendingArchiveIfNeeded() {
+        if (!persistenceEnabled) return
         val pending = readPendingArchive() ?: return
         scope.launch {
             runCatching {
@@ -481,4 +596,119 @@ object MetricsRepository {
             .remove(KEY_PENDING_ARCHIVE_RUNNING_DURATION)
             .apply()
     }
+
+    private fun startHistoryObserverIfNeeded() {
+        if (historyObserverStarted) return
+        historyObserverStarted = true
+
+        scope.launch {
+            database.dailyHistoryDao().observeRecent(HISTORY_LIMIT).collect { rows ->
+                if (!persistenceEnabled) return@collect
+
+                val history = rows.map { it.toModel() }
+                if (history == inMemoryHistory) return@collect
+                inMemoryHistory = history
+                _uiState.update { state ->
+                    state.copy(history = history)
+                }
+            }
+        }
+    }
+
+    private fun persistCurrentStateToDisk() {
+        val state = _uiState.value
+        saveMetricsToDisk(state.metrics)
+        val editor = prefs.edit()
+            .putBoolean(KEY_IS_TRACKING, state.isTracking)
+            .putBoolean(KEY_SENSOR_SUPPORTED, state.sensorSupported)
+            .putInt(KEY_PROFILE_HEIGHT, state.userProfile.normalizedHeightCm)
+            .putString(KEY_PROFILE_SEX, state.userProfile.sex.name)
+            .putDouble(KEY_PROFILE_STRIDE_SCALE, state.userProfile.normalizedStrideScale)
+            .putString(KEY_WEATHER_CONDITION, state.weatherContext.condition.name)
+            .putInt(KEY_WEATHER_TEMPERATURE, state.weatherContext.normalizedTemperatureC)
+            .putString(KEY_WEATHER_CITY, state.weatherCity.trim().ifBlank { MakimuraShop.ADDRESS_LABEL }.take(120))
+            .putLong(KEY_WEATHER_UPDATED_AT, state.weatherUpdatedAtEpochMs)
+
+        val normalizedWeightKg = state.userProfile.normalizedWeightKg
+        if (normalizedWeightKg == null) {
+            editor.remove(KEY_PROFILE_WEIGHT)
+        } else {
+            editor.putDouble(KEY_PROFILE_WEIGHT, normalizedWeightKg)
+        }
+
+        if (stepCounterBaselineDay != null && stepCounterBaselineValue != null) {
+            editor
+                .putLong(KEY_BASELINE_DAY, stepCounterBaselineDay!!)
+                .putFloat(KEY_BASELINE_VALUE, stepCounterBaselineValue!!)
+        } else {
+            editor
+                .remove(KEY_BASELINE_DAY)
+                .remove(KEY_BASELINE_VALUE)
+        }
+
+        editor.apply()
+
+        scope.launch {
+            val dao = database.dailyHistoryDao()
+            dao.clearAll()
+            if (state.history.isNotEmpty()) {
+                dao.upsertAll(state.history.map { it.toHistoryEntity() })
+            }
+        }
+    }
+
+    private fun clearPersistedStateLocked(clearPreference: Boolean) {
+        val editor = prefs.edit()
+            .remove(KEY_DAY)
+            .remove(KEY_STEPS)
+            .remove(KEY_TOTAL_DISTANCE)
+            .remove(KEY_TOTAL_CALORIES)
+            .remove(KEY_MOVING_DURATION)
+            .remove(KEY_BRISK_DISTANCE)
+            .remove(KEY_BRISK_DURATION)
+            .remove(KEY_RUNNING_DISTANCE)
+            .remove(KEY_RUNNING_DURATION)
+            .remove(KEY_LAST_UPDATED)
+            .remove(KEY_IS_TRACKING)
+            .remove(KEY_SENSOR_SUPPORTED)
+            .remove(KEY_BASELINE_DAY)
+            .remove(KEY_BASELINE_VALUE)
+            .remove(KEY_PROFILE_HEIGHT)
+            .remove(KEY_PROFILE_SEX)
+            .remove(KEY_PROFILE_STRIDE_SCALE)
+            .remove(KEY_PROFILE_WEIGHT)
+            .remove(KEY_WEATHER_CONDITION)
+            .remove(KEY_WEATHER_TEMPERATURE)
+            .remove(KEY_WEATHER_CITY)
+            .remove(KEY_WEATHER_UPDATED_AT)
+            .remove(KEY_PENDING_ARCHIVE_DAY)
+            .remove(KEY_PENDING_ARCHIVE_STEPS)
+            .remove(KEY_PENDING_ARCHIVE_TOTAL_DISTANCE)
+            .remove(KEY_PENDING_ARCHIVE_TOTAL_CALORIES)
+            .remove(KEY_PENDING_ARCHIVE_MOVING_DURATION)
+            .remove(KEY_PENDING_ARCHIVE_BRISK_DISTANCE)
+            .remove(KEY_PENDING_ARCHIVE_BRISK_DURATION)
+            .remove(KEY_PENDING_ARCHIVE_RUNNING_DISTANCE)
+            .remove(KEY_PENDING_ARCHIVE_RUNNING_DURATION)
+        if (clearPreference) {
+            editor.remove(KEY_PERSISTENCE_ENABLED)
+        } else {
+            editor.putBoolean(KEY_PERSISTENCE_ENABLED, false)
+        }
+        editor.apply()
+
+        scope.launch {
+            database.dailyHistoryDao().clearAll()
+        }
+    }
+}
+
+internal fun upsertRecentHistory(
+    history: List<DailyHistory>,
+    day: DailyHistory,
+    limit: Int,
+): List<DailyHistory> {
+    return (listOf(day) + history.filterNot { it.dayEpoch == day.dayEpoch })
+        .sortedByDescending { it.dayEpoch }
+        .take(limit)
 }

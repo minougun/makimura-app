@@ -51,6 +51,17 @@ object RamenRecommendationEngine {
             reasons += "気温は中間帯なので標準バランス"
         }
 
+        if (tier == RecommendationTier.REWARD) {
+            selectedNames.addIfMissing("チャーシュー3枚")
+            reasons += "高運動量なのでチャーシュー3枚でタンパク質補給"
+        } else if (tier == RecommendationTier.BALANCE && isColdOrWet) {
+            selectedNames.addIfMissing("チャーシュー2枚")
+            reasons += "寒い日はチャーシュー2枚で栄養補給"
+        } else if (tier == RecommendationTier.BALANCE) {
+            selectedNames.addIfMissing("チャーシュー1枚")
+            reasons += "バランス運動量なのでチャーシュー1枚を追加"
+        }
+
         val items = selectedNames.map { name ->
             RecommendedMenuItem(name = name, priceYen = menuPrices[name] ?: 0)
         }
@@ -64,11 +75,47 @@ object RamenRecommendationEngine {
         )
     }
 
+    fun homeSummary(
+        metrics: TodayMetrics,
+        weatherContext: WeatherContext,
+        recommendation: RamenRecommendation,
+    ): String {
+        return buildString {
+            append(highlight(recommendation))
+            append(' ')
+            append("運動量 ${metrics.steps}歩・${summaryWeatherLabel(weatherContext.condition)} ${weatherContext.temperatureC}°Cの")
+            append(tierLabel(recommendation.tier))
+            append("提案です。")
+        }
+    }
+
+    fun highlight(recommendation: RamenRecommendation): String {
+        val toppingNames = recommendation.items
+            .map { item -> item.name }
+            .filter { name -> name in RamenMenuCatalog.toppingItemNames }
+
+        return when (toppingNames.size) {
+            0 -> "今日は定番のラーメン構成です。"
+            1 -> "今日は「${toppingNames[0]}」推しです。"
+            2 -> "今日は「${toppingNames[0]}」と「${toppingNames[1]}」推しです。"
+            else -> "今日は「${toppingNames[0]}」と「${toppingNames[1]}」を中心におすすめします。"
+        }
+    }
+
     private fun tierFromSteps(steps: Int): RecommendationTier {
         return when {
             steps < 4_000 -> RecommendationTier.LIGHT
             steps < 10_000 -> RecommendationTier.BALANCE
             else -> RecommendationTier.REWARD
+        }
+    }
+
+    private fun summaryWeatherLabel(condition: WeatherCondition): String {
+        return when (condition) {
+            WeatherCondition.SUNNY -> "晴れ"
+            WeatherCondition.CLOUDY -> "くもり"
+            WeatherCondition.RAINY -> "雨"
+            WeatherCondition.SNOWY -> "雪"
         }
     }
 

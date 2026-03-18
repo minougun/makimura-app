@@ -96,6 +96,7 @@ data class TrackingUiState(
     val weatherUpdatedAtEpochMs: Long = 0L,
     val isTracking: Boolean = false,
     val sensorSupported: Boolean = true,
+    val persistenceEnabled: Boolean = false,
 )
 
 internal fun currentDayEpoch(): Long = LocalDate.now(ZoneId.systemDefault()).toEpochDay()

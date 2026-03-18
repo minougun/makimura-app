@@ -13,7 +13,7 @@
 
 - 「今日 / 履歴 / 設定」の3タブ UI
 - グラデーション背景 + ガラス風カードのUIデザイン
-- Room による日次履歴保存（過去30日表示）
+- Room による日次履歴保存（端末保存を有効にした場合のみ）
 - 身長/性別/歩幅補正 + 実測キャリブレーション
 - 体重入力（任意）によるカロリー精度向上
 - 履歴の週次/30日集計表示
@@ -87,6 +87,18 @@ APK:
 
 - `app/build/outputs/apk/debug/app-debug.apk`
 
+### 署名と更新インストール
+
+同じ `applicationId` (`com.minou.pedometer`) で更新インストールするには、署名鍵を毎回同一にする必要があります。
+署名鍵が異なるAPKを重ねると、インストーラで「更新しますか？」の後に「アプリがインストールされていません」が発生します。
+
+1. `keystore.properties.example` をコピーして `keystore.properties` を作成
+2. `storeFile/storePassword/keyAlias/keyPassword` を設定
+3. `./gradlew :app:assembleRelease`（または `.\gradlew.bat :app:assembleRelease`）でビルド
+
+`app/build.gradle.kts` は `Release` タスク時に `keystore.properties` が無い場合ビルド失敗にし、署名ブレを防止します。
+`versionCode` は `20260306` 以上の単調増加を維持してください（小さい値に戻すとダウングレードで更新不可）。
+
 ## Web版 (iOS/Android/PCブラウザ)
 
 `web/` にブラウザ向け実装を追加しています。主な機能:
@@ -96,7 +108,7 @@ APK:
 - Android版と同等の歩幅・カロリー推定ロジック
 - 日付切り替え時の日次履歴アーカイブ
 - 期間フィルタ（全期間 / 7日 / 30日）とCSVエクスポート
-- LocalStorage 永続化
+- 既定はタブ限定保存、必要時のみ端末への永続保存を明示的に有効化
 - PWA対応（`manifest.webmanifest` + `sw.js`）
 
 起動例:
@@ -113,7 +125,9 @@ python3 -m http.server 8080
 - iOS Safari は「計測開始」時にモーション許可が必要です。
 - センサー権限や対応状況により、端末によっては精度差があります。
 - `file://` 直開きでは PWA / センサー権限が制限されるため、HTTP(S)配信で利用してください。
-- 体重などの設定値はブラウザの `localStorage` に保存されるため、共用端末では使用後にデータ削除を推奨します。
+- 既定では設定値と履歴は `sessionStorage` に保持し、タブを閉じると破棄します。
+- 端末への永続保存を有効にした場合のみ `localStorage` を使います。
+- 共用端末では永続保存をオフのまま使い、必要に応じて「保存データを削除」を実行してください。
 
 ## 権限
 
@@ -121,3 +135,4 @@ python3 -m http.server 8080
 - `FOREGROUND_SERVICE`
 - `FOREGROUND_SERVICE_HEALTH`
 - `POST_NOTIFICATIONS` (Android 13+)
+Android版も同じ方針で、既定では端末への永続保存を行いません。設定画面で「この端末にデータを保存する」を有効にした場合のみ、履歴・歩数メトリクス・体重/天気設定を端末へ保存します。

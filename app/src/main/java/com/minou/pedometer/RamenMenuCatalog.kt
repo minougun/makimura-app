@@ -31,6 +31,9 @@ object RamenMenuCatalog {
         RamenMenuCatalogItem("menma", "メンマ", 150, RamenMenuCategory.TOPPING),
         RamenMenuCatalogItem("kimchi", "キムチ", 150, RamenMenuCategory.TOPPING),
         RamenMenuCatalogItem("natto", "納豆", 150, RamenMenuCategory.TOPPING),
+        RamenMenuCatalogItem("chashu_1", "チャーシュー1枚", 120, RamenMenuCategory.TOPPING),
+        RamenMenuCatalogItem("chashu_2", "チャーシュー2枚", 240, RamenMenuCategory.TOPPING),
+        RamenMenuCatalogItem("chashu_3", "チャーシュー3枚", 360, RamenMenuCategory.TOPPING),
         RamenMenuCatalogItem("extra_noodles", "替玉", 170, RamenMenuCategory.TOPPING),
         RamenMenuCatalogItem("rice_plain", "ご飯", 200, RamenMenuCategory.RICE),
         RamenMenuCatalogItem("rice_mini_chashu", "ミニチャーシュー丼", 370, RamenMenuCategory.RICE),
@@ -44,4 +47,31 @@ object RamenMenuCatalog {
 
     val priceTable: Map<String, Int> = items.associate { it.name to it.priceYen }
     val requiredItemNames: Set<String> = items.filter { it.required }.mapTo(linkedSetOf()) { it.name }
+    val toppingItemNames: Set<String> = items
+        .filter { item -> item.category == RamenMenuCategory.TOPPING }
+        .mapTo(linkedSetOf()) { item -> item.name }
+    val chashuItemNames: Set<String> = items
+        .filter { item -> item.id.startsWith("chashu_") }
+        .mapTo(linkedSetOf()) { item -> item.name }
+
+    fun toggleSelection(selectedNames: Set<String>, targetName: String): Set<String> {
+        val normalized = selectedNames + requiredItemNames
+        if (targetName in requiredItemNames) return normalized
+
+        if (targetName in chashuItemNames) {
+            val wasSelected = targetName in normalized
+            val withoutChashu = normalized - chashuItemNames
+            return if (wasSelected) {
+                withoutChashu + requiredItemNames
+            } else {
+                withoutChashu + targetName + requiredItemNames
+            }
+        }
+
+        return if (targetName in normalized) {
+            normalized - targetName
+        } else {
+            normalized + targetName
+        }
+    }
 }

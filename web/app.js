@@ -64,6 +64,9 @@ const MENU_ITEMS = [
 const PRICE_TABLE = Object.fromEntries(MENU_ITEMS.map((i) => [i.name, i.priceYen]));
 const REQUIRED_NAMES = new Set(MENU_ITEMS.filter((i) => i.required).map((i) => i.name));
 const CHASHU_NAMES = MENU_ITEMS.filter((i) => i.id.startsWith("chashu_")).map((i) => i.name);
+const TOPPING_NAMES = new Set(
+  MENU_ITEMS.filter((i) => i.category === "TOPPING").map((i) => i.name),
+);
 
 // ===== Recommendation Engine =====
 function recommend(metrics, weatherContext) {
@@ -128,6 +131,30 @@ function tierLabel(tier) {
   return "ご褒美";
 }
 
+function recommendationHighlight(rec) {
+  const toppingNames = rec.items
+    .map((item) => item.name)
+    .filter((name) => TOPPING_NAMES.has(name));
+
+  if (toppingNames.length === 0) {
+    return "今日は定番のラーメン構成です。";
+  }
+
+  if (toppingNames.length === 1) {
+    return `今日は「${toppingNames[0]}」推しです。`;
+  }
+
+  if (toppingNames.length === 2) {
+    return `今日は「${toppingNames[0]}」と「${toppingNames[1]}」推しです。`;
+  }
+
+  return `今日は「${toppingNames[0]}」と「${toppingNames[1]}」を中心におすすめします。`;
+}
+
+function homeRecommendationSummary(metrics, weatherContext, rec) {
+  return `${recommendationHighlight(rec)} 運動量 ${metrics.steps}歩・${weatherLabel(weatherContext.condition)} ${weatherContext.temperatureC}°Cの${tierLabel(rec.tier)}提案です。`;
+}
+
 function addIfMissing(arr, name) {
   if (!arr.includes(name)) arr.push(name);
 }
@@ -171,6 +198,13 @@ const runtime = {
   lastPeakMs: 0,
   lastStepTimestampMs: null,
   recentStepTimestampsMs: [],
+  backgroundRecoveryInProgress: false,
+  recommendationCacheKey: "",
+  recommendationCacheValue: null,
+  renderCache: {
+    recommendationItemsKey: "",
+    currentOrderKey: "",
+  },
 };
 
 let persistTimer = 0;
@@ -203,6 +237,7 @@ const els = {
   applyRecSet: document.getElementById("apply-rec-set"),
   resetOrder: document.getElementById("reset-order"),
   menuCatalog: document.getElementById("menu-catalog"),
+  menuChips: [],
   currentOrder: document.getElementById("current-order"),
   orderTotal: document.getElementById("order-total"),
 
@@ -294,7 +329,7 @@ function bindEvents() {
 
   // Home
   els.applyRecommendation.addEventListener("click", () => {
-    const rec = recommend(state.metrics, state.weatherContext);
+    const rec = getCurrentRecommendation();
     state.orderSelectedNames = rec.items
       .map((i) => i.name)
       .filter((n) => !REQUIRED_NAMES.has(n));
@@ -306,7 +341,7 @@ function bindEvents() {
 
   // Order
   els.applyRecSet.addEventListener("click", () => {
-    const rec = recommend(state.metrics, state.weatherContext);
+    const rec = getCurrentRecommendation();
     state.orderSelectedNames = rec.items
       .map((i) => i.name)
       .filter((n) => !REQUIRED_NAMES.has(n));
@@ -497,26 +532,59 @@ function setActiveTab(tab) {
   }
 }
 
+function recommendationStateKey(metrics, weatherContext) {
+  return [
+    metrics.steps,
+    weatherContext.condition,
+    weatherContext.temperatureC,
+  ].join("|");
+}
+
+function getCurrentRecommendation() {
+  const key = recommendationStateKey(state.metrics, state.weatherContext);
+  if (runtime.recommendationCacheKey === key && runtime.recommendationCacheValue) {
+    return runtime.recommendationCacheValue;
+  }
+
+  const recommendation = recommend(state.metrics, state.weatherContext);
+  runtime.recommendationCacheKey = key;
+  runtime.recommendationCacheValue = recommendation;
+  return recommendation;
+}
+
+function renderMetricRows(container, items, cacheKeyName) {
+  const nextKey = items.map((item) => `${item.name}:${item.priceYen}`).join("|");
+  if (runtime.renderCache[cacheKeyName] === nextKey) return;
+
+  const fragment = document.createDocumentFragment();
+  items.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "metric-row";
+    const label = document.createElement("span");
+    label.textContent = item.name;
+    const value = document.createElement("span");
+    value.textContent = formatYen(item.priceYen);
+    row.append(label, value);
+    fragment.appendChild(row);
+  });
+
+  container.replaceChildren(fragment);
+  runtime.renderCache[cacheKeyName] = nextKey;
+}
+
 // ===== Render: Home =====
 function renderHome() {
   const m = state.metrics;
   const wc = state.weatherContext;
-  const rec = recommend(m, wc);
+  const rec = getCurrentRecommendation();
 
-  els.homeSummary.textContent =
-    `運動量 ${m.steps}歩 と ${weatherLabel(wc.condition)} ${wc.temperatureC}°C から提案`;
+  els.homeSummary.textContent = homeRecommendationSummary(m, wc, rec);
 
   els.recCity.textContent = SHOP_ADDRESS;
   els.recWeather.textContent = `${weatherLabel(wc.condition)} / ${wc.temperatureC}°C`;
   els.recTier.textContent = tierLabel(rec.tier);
 
-  els.recItems.innerHTML = "";
-  rec.items.forEach((item) => {
-    const row = document.createElement("div");
-    row.className = "metric-row";
-    row.innerHTML = `<span>${item.name}</span><span>${formatYen(item.priceYen)}</span>`;
-    els.recItems.appendChild(row);
-  });
+  renderMetricRows(els.recItems, rec.items, "recommendationItemsKey");
 
   els.recTotal.textContent = formatYen(rec.totalYen);
   els.recReason.textContent = rec.reason;
@@ -569,6 +637,8 @@ function buildMenuCatalog() {
     section.appendChild(chipGroup);
     els.menuCatalog.appendChild(section);
   });
+
+  els.menuChips = els.menuCatalog.querySelectorAll(".menu-chip[data-item-name]");
 }
 
 function toggleOrderItem(name) {
@@ -595,8 +665,7 @@ function renderOrder() {
 }
 
 function renderOrderChips() {
-  const chips = els.menuCatalog.querySelectorAll(".menu-chip[data-item-name]");
-  chips.forEach((chip) => {
+  els.menuChips.forEach((chip) => {
     const name = chip.dataset.itemName;
     if (REQUIRED_NAMES.has(name)) return;
     chip.classList.toggle("is-active", state.orderSelectedNames.includes(name));
@@ -609,15 +678,11 @@ function renderCurrentOrder() {
     ...state.orderSelectedNames.filter((n) => !REQUIRED_NAMES.has(n)),
   ];
   const sorted = [...allSelected].sort((a, b) => (PRICE_TABLE[a] ?? 0) - (PRICE_TABLE[b] ?? 0));
-
-  els.currentOrder.innerHTML = "";
-  sorted.forEach((name) => {
-    const price = PRICE_TABLE[name] ?? 0;
-    const row = document.createElement("div");
-    row.className = "metric-row";
-    row.innerHTML = `<span>${name}</span><span>${formatYen(price)}</span>`;
-    els.currentOrder.appendChild(row);
-  });
+  renderMetricRows(
+    els.currentOrder,
+    sorted.map((name) => ({ name, priceYen: PRICE_TABLE[name] ?? 0 })),
+    "currentOrderKey",
+  );
 
   const total = sorted.reduce((sum, name) => sum + (PRICE_TABLE[name] ?? 0), 0);
   els.orderTotal.textContent = formatYen(total);
@@ -1047,30 +1112,37 @@ function scheduleMidnightReset() {
 }
 
 async function recoverFromBackground() {
-  const changed = ensureCurrentDay();
-  if (changed) {
-    if (state.isTracking && !runtime.motionListener) {
-      try {
-        await startTracking();
-      } catch (_error) {
-        state.isTracking = false;
-        setTodayMessage("日付変更後の自動計測再開に失敗しました。手動で計測開始してください。", true);
-        renderHome();
-        if (state.activitySubView === "history") renderHistory();
-        scheduleMidnightReset();
-        return;
+  if (runtime.backgroundRecoveryInProgress) return;
+  runtime.backgroundRecoveryInProgress = true;
+
+  try {
+    const changed = ensureCurrentDay();
+    if (changed) {
+      if (state.isTracking && !runtime.motionListener) {
+        try {
+          await startTracking();
+        } catch (_error) {
+          state.isTracking = false;
+          setTodayMessage("日付変更後の自動計測再開に失敗しました。手動で計測開始してください。", true);
+          renderHome();
+          if (state.activitySubView === "history") renderHistory();
+          scheduleMidnightReset();
+          return;
+        }
+        setTodayMessage("日付が変わったため、歩数をリセットして自動で計測を再開しました。");
+      } else if (state.isTracking) {
+        setTodayMessage("日付が変わったため、歩数をリセットして自動で計測を再開しました。");
+      } else {
+        renderActivity();
+        setTodayMessage("日付が変わったため、歩数をリセットしました。");
       }
-      setTodayMessage("日付が変わったため、歩数をリセットして自動で計測を再開しました。");
-    } else if (state.isTracking) {
-      setTodayMessage("日付が変わったため、歩数をリセットして自動で計測を再開しました。");
-    } else {
-      renderActivity();
-      setTodayMessage("日付が変わったため、歩数をリセットしました。");
+      renderHome();
+      if (state.activitySubView === "history") renderHistory();
     }
-    renderHome();
-    if (state.activitySubView === "history") renderHistory();
+    scheduleMidnightReset();
+  } finally {
+    runtime.backgroundRecoveryInProgress = false;
   }
-  scheduleMidnightReset();
 }
 
 function scheduleMetricsRender() {
@@ -1691,7 +1763,8 @@ function parseProfileFromInputs(strictValidation) {
 function setTodayMessage(message, isError = false) {
   state.todayMessage = message;
   state.todayMessageIsError = isError;
-  renderActivity();
+  els.todayMessage.textContent = message;
+  els.todayMessage.classList.toggle("error", isError === true);
 }
 
 function setHistoryMessage(message, isError = false) {

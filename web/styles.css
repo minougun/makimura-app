@@ -23,11 +23,15 @@ body {
   min-height: 100%;
 }
 
-body {
+html {
   background:
     radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.45), transparent 35%),
     radial-gradient(circle at 90% 30%, rgba(255, 204, 126, 0.5), transparent 35%),
     linear-gradient(165deg, var(--bg-top), var(--bg-mid) 45%, var(--bg-bottom));
+}
+
+body {
+  background: transparent;
   color: var(--ink);
   font-family: "Hiragino Maru Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
   padding: 20px 12px 28px;
