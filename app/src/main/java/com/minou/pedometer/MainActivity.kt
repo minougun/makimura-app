@@ -1492,7 +1492,18 @@ private fun RecommendationPreferencesCard(
 
             Text("除外するトッピング", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("ねぎ", "ニンニク", "コーン", "煮卵", "メンマ", "キムチ", "納豆").forEach { name ->
+                listOf(
+                    "ねぎ",
+                    "ニンニク",
+                    "コーン",
+                    "煮卵",
+                    "メンマ",
+                    "キムチ",
+                    "納豆",
+                    "チャーシュー1枚",
+                    "チャーシュー2枚",
+                    "チャーシュー3枚",
+                ).forEach { name ->
                     FilterChip(
                         selected = recommendationPreferences.excludedToppings.contains(name),
                         onClick = {

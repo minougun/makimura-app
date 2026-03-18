@@ -847,7 +847,18 @@ function buildMenuCatalog() {
 }
 
 function buildRecommendationSettingsControls() {
-  const toppingNames = ["ねぎ", "ニンニク", "コーン", "煮卵", "メンマ", "キムチ", "納豆"];
+  const toppingNames = [
+    "ねぎ",
+    "ニンニク",
+    "コーン",
+    "煮卵",
+    "メンマ",
+    "キムチ",
+    "納豆",
+    "チャーシュー1枚",
+    "チャーシュー2枚",
+    "チャーシュー3枚",
+  ];
   toppingNames.forEach((name) => {
     const chip = document.createElement("button");
     chip.type = "button";
