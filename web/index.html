@@ -49,10 +49,21 @@
           <div class="button-row" style="margin-top:8px">
             <button id="toggle-reason-detail" class="btn" type="button">ひとことで見る</button>
           </div>
-          <p id="rec-reason" class="muted"></p>
-          <p id="shop-hours-note" class="muted"></p>
-          <p id="crowd-note" class="muted"></p>
-          <p id="rec-updated" class="muted"></p>
+          <section class="recommendation-detail-panel">
+            <p class="detail-label">提案理由</p>
+            <p id="rec-reason" class="recommendation-lead"></p>
+          </section>
+          <div class="recommendation-note-grid">
+            <section class="recommendation-note-card">
+              <p class="detail-label">営業時間メモ</p>
+              <p id="shop-hours-note" class="muted"></p>
+            </section>
+            <section class="recommendation-note-card">
+              <p class="detail-label">混雑メモ</p>
+              <p id="crowd-note" class="muted"></p>
+            </section>
+          </div>
+          <p id="rec-updated" class="detail-meta"></p>
         </article>
 
         <article class="card">

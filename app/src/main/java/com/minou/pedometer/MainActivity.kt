@@ -1614,20 +1614,55 @@ private fun RecommendationCard(
                 onClick = { showDetailedReason = !showDetailedReason },
                 label = { Text(if (showDetailedReason) "詳しく見る: ON" else "ひとことで見る") },
             )
-            Text(
-                text = if (showDetailedReason) recommendation.reason else shortReason,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
+            RecommendationInfoPanel(
+                title = "提案理由",
+                body = if (showDetailedReason) recommendation.reason else shortReason,
             )
-            Text(recommendationPreferences.shopHoursNote, style = MaterialTheme.typography.bodySmall)
-            Text(recommendationPreferences.crowdNote, style = MaterialTheme.typography.bodySmall)
+            RecommendationInfoPanel(
+                title = "営業時間メモ",
+                body = recommendationPreferences.shopHoursNote,
+            )
+            RecommendationInfoPanel(
+                title = "混雑メモ",
+                body = recommendationPreferences.crowdNote,
+            )
             if (weatherUpdatedAtEpochMs > 0L) {
                 Text(
                     text = "天気更新: ${formatDateTime(weatherUpdatedAtEpochMs)}",
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun RecommendationInfoPanel(
+    title: String,
+    body: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = Color.Black.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
