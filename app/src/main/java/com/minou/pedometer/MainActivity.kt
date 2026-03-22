@@ -115,9 +115,9 @@ private val temperatureInputRegex = Regex("""-?\d{0,2}""")
 
 private val AppBackgroundGradient = Brush.linearGradient(
     colors = listOf(
-        Color(0xFFF6E8D0),
+        Color(0xFFF5E4C4),
         Color(0xFFECC089),
-        Color(0xFFCE5B2C),
+        Color(0xFFF5C28A),
     ),
     start = Offset.Zero,
     end = Offset(1600f, 2200f),

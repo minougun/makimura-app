@@ -19,8 +19,8 @@ class WebAppActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Prevent Android's default bar tint (which can appear purple on some devices).
-        window.statusBarColor = Color.parseColor("#FFF4DF")
-        window.navigationBarColor = Color.parseColor("#FFF4DF")
+        window.statusBarColor = Color.parseColor("#F5E4C4")
+        window.navigationBarColor = Color.parseColor("#F5E4C4")
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -33,7 +33,7 @@ class WebAppActivity : ComponentActivity() {
 
             webChromeClient = WebChromeClient()
             webViewClient = object : WebViewClient() {}
-            setBackgroundColor(Color.parseColor("#FFF4DF"))
+            setBackgroundColor(Color.parseColor("#F5E4C4"))
         }
 
         setContentView(webView)
