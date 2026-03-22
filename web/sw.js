@@ -1,4 +1,4 @@
-const CACHE_NAME = "makimura-web-v4";
+const CACHE_NAME = "makimura-web-v5";
 const ASSETS = [
   "./",
   "./index.html",
