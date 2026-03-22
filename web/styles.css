@@ -38,7 +38,7 @@ body {
 }
 
 .app-shell {
-  max-width: 960px;
+  max-width: 540px;
   margin: 0 auto;
 }
 
@@ -544,6 +544,25 @@ input[type="range"] {
   font-size: 0.82rem;
   color: rgba(35, 21, 15, 0.74);
   text-align: center;
+}
+
+@media (min-width: 768px) {
+  .app-shell {
+    max-width: 720px;
+  }
+
+  .tab-panel {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Let wide cards span full width */
+  .tab-panel > .card:first-child,
+  .tab-panel > .card:only-child,
+  #activity-dashboard,
+  #activity-history,
+  #menu-catalog {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 640px) {
