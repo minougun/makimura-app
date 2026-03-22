@@ -187,6 +187,11 @@ h3 {
 
 .recommendation-detail-panel {
   margin-top: 10px;
+  background: rgba(33, 24, 17, 0.18);
+}
+
+.recommendation-note-card {
+  background: rgba(33, 24, 17, 0.18);
 }
 
 .recommendation-lead {
