@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -1054,7 +1055,16 @@ private fun SettingsTab(
                         }
                     },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused) {
+                                val v = heightInput.toIntOrNull()
+                                if (v != null) {
+                                    heightInput = v.coerceIn(120, 220).toString()
+                                }
+                            }
+                        },
                 )
 
                 OutlinedTextField(
@@ -1065,6 +1075,7 @@ private fun SettingsTab(
                         }
                     },
                     label = { Text("体重 (kg, 任意)") },
+                    placeholder = { Text("未入力なら推定(30〜200kg)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = isWeightInvalid,
                     supportingText = {
@@ -1075,7 +1086,16 @@ private fun SettingsTab(
                         }
                     },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused && weightInput.isNotEmpty()) {
+                                val v = weightInput.toDoubleOrNull()
+                                if (v != null) {
+                                    weightInput = formatWeightInput(v.coerceIn(30.0, 200.0))
+                                }
+                            }
+                        },
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1404,7 +1424,7 @@ private fun SettingsTab(
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
-                    text = "共有端末ではオフのまま使うことを推奨します。",
+                    text = "既定で端末にデータを保存します。共有端末ではオフにすることを推奨します。",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 persistenceSaveMessage?.let { message ->

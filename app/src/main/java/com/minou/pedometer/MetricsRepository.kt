@@ -90,7 +90,13 @@ object MetricsRepository {
         database = Room.databaseBuilder(appContext, HistoryDatabase::class.java, HISTORY_DB_NAME)
             .fallbackToDestructiveMigration()
             .build()
-        persistenceEnabled = prefs.getBoolean(KEY_PERSISTENCE_ENABLED, false)
+        persistenceEnabled = if (prefs.contains(KEY_PERSISTENCE_ENABLED)) {
+            prefs.getBoolean(KEY_PERSISTENCE_ENABLED, true)
+        } else {
+            // Default to ON for new users; persist the choice immediately.
+            prefs.edit().putBoolean(KEY_PERSISTENCE_ENABLED, true).apply()
+            true
+        }
 
         if (persistenceEnabled) {
             flushPendingArchiveIfNeeded()
