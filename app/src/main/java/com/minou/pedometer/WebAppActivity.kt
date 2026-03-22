@@ -9,6 +9,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
 
 class WebAppActivity : ComponentActivity() {
 
@@ -18,9 +20,11 @@ class WebAppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Prevent Android's default bar tint (which can appear purple on some devices).
-        window.statusBarColor = Color.parseColor("#F0D4A0")
-        window.navigationBarColor = Color.parseColor("#F0D4A0")
+        enableEdgeToEdge()
+        // Match gradient top colour so status bar blends in.
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
