@@ -557,6 +557,24 @@ function bindEvents() {
     input.addEventListener("input", () => renderSettingsPreview());
   });
 
+  // Clamp height/weight on blur to enforce min/max in UI
+  els.inputHeight.addEventListener("blur", () => {
+    const v = Number.parseInt(els.inputHeight.value, 10);
+    if (Number.isFinite(v)) {
+      els.inputHeight.value = String(clamp(v, MIN_HEIGHT_CM, MAX_HEIGHT_CM));
+      renderSettingsPreview();
+    }
+  });
+  els.inputWeight.addEventListener("blur", () => {
+    const raw = els.inputWeight.value.trim();
+    if (raw === "") return;
+    const v = Number.parseFloat(raw);
+    if (Number.isFinite(v)) {
+      els.inputWeight.value = formatWeightInput(clamp(v, MIN_WEIGHT_KG, MAX_WEIGHT_KG));
+      renderSettingsPreview();
+    }
+  });
+
   els.sexChips.forEach((chip) => {
     chip.addEventListener("click", () => {
       els.sexChips.forEach((c) => c.classList.remove("is-active"));
@@ -2433,7 +2451,11 @@ function renderPersistenceModeNote() {
 
 function readPersistPreference() {
   try {
-    return window.localStorage.getItem(PERSIST_PREFERENCE_KEY) === "1";
+    const stored = window.localStorage.getItem(PERSIST_PREFERENCE_KEY);
+    // Default to ON for new users (key not yet set).
+    // Explicit OFF is stored as "0".
+    if (stored === null) return true;
+    return stored === "1";
   } catch (_error) {
     return false;
   }
@@ -2441,11 +2463,8 @@ function readPersistPreference() {
 
 function writePersistPreference(enabled) {
   try {
-    if (enabled) {
-      window.localStorage.setItem(PERSIST_PREFERENCE_KEY, "1");
-    } else {
-      window.localStorage.removeItem(PERSIST_PREFERENCE_KEY);
-    }
+    // Store "1" for ON, "0" for explicit OFF (distinguishes from never-set).
+    window.localStorage.setItem(PERSIST_PREFERENCE_KEY, enabled ? "1" : "0");
   } catch (_error) {
     // ignore
   }
