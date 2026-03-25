@@ -336,10 +336,13 @@ let midnightResetTimer = null;
 let metricsRenderTimer = 0;
 let lastMetricsRenderAtMs = 0;
 
-// ===== DOM refs =====
-const els = {
-  tabButtons: document.querySelectorAll(".tab-button"),
-  tabPanels: document.querySelectorAll("[data-tab-panel]"),
+// ===== DOM refs（hydrateDomRefs で一度だけ注入。起動直後の空 NodeList を避ける）=====
+const els = {};
+
+function hydrateDomRefs() {
+  Object.assign(els, {
+    tabButtons: document.querySelectorAll(".tab-button"),
+    tabPanels: document.querySelectorAll("[data-tab-panel]"),
 
   // Home
   homeWeatherIcon: document.getElementById("home-weather-icon"),
@@ -443,26 +446,42 @@ const els = {
 
   // Settings - data
   clearLocalDataButton: document.getElementById("clear-local-data"),
-};
+  });
+}
 
-// ===== Init =====
-buildMenuCatalog();
-buildRecommendationSettingsControls();
-bindEvents();
-ensureCurrentDay();
-renderAll();
-registerServiceWorker();
-scheduleWeatherAutoRefresh();
-scheduleMidnightReset();
+function bootstrapMakimura() {
+  hydrateDomRefs();
+  buildMenuCatalog();
+  buildRecommendationSettingsControls();
+  bindEvents();
+  ensureCurrentDay();
+  try {
+    renderAll();
+  } catch (error) {
+    console.error("makimura: renderAll が失敗しました（タブは操作できます。再読み込みを試してください）", error);
+  }
+  registerServiceWorker();
+  scheduleWeatherAutoRefresh();
+  scheduleMidnightReset();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => bootstrapMakimura(), { once: true });
+} else {
+  bootstrapMakimura();
+}
 
 // ===== Event binding =====
 function bindEvents() {
-  els.tabButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const nextTab = button.dataset.tab;
+  const bottomNav = document.querySelector(".bottom-nav");
+  if (bottomNav) {
+    bottomNav.addEventListener("click", (event) => {
+      const btn = event.target instanceof Element ? event.target.closest(".tab-button") : null;
+      if (!btn || !bottomNav.contains(btn)) return;
+      const nextTab = btn.getAttribute("data-tab");
       if (nextTab) setActiveTab(nextTab);
     });
-  });
+  }
 
   // Home（提案の詳細は <details> のネイティブ開閉＋ラベル更新）
   if (els.recReasonDetails) {
@@ -562,7 +581,7 @@ function bindEvents() {
   });
 
   // Settings - profile
-  [els.inputHeight, els.inputWeight, els.inputStrideScale].forEach((input) => {
+  [els.inputHeight, els.inputWeight, els.inputStrideScale].filter(Boolean).forEach((input) => {
     input.addEventListener("input", () => renderSettingsPreview());
   });
 
@@ -668,14 +687,15 @@ function bindEvents() {
 function setActiveTab(tab) {
   state.activeTab = tab;
 
-  els.tabButtons.forEach((button) => {
-    const active = button.dataset.tab === tab;
+  document.querySelectorAll(".tab-button").forEach((button) => {
+    const active = button.getAttribute("data-tab") === tab;
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-selected", active ? "true" : "false");
   });
 
-  els.tabPanels.forEach((panel) => {
-    panel.classList.toggle("is-hidden", panel.dataset.tabPanel !== tab);
+  document.querySelectorAll("[data-tab-panel]").forEach((panel) => {
+    const panelTab = panel.getAttribute("data-tab-panel");
+    panel.classList.toggle("is-hidden", panelTab !== tab);
   });
 
   if (tab === "activity") {
@@ -784,6 +804,8 @@ function recordRecommendationHistory(recommendation) {
 // ===== Render: Home =====
 function renderHome() {
   repairWeatherContextIfNeeded();
+  if (!els.homeHeroTitle || !els.homeHeroPrefs || !els.recItems || !els.recTier) return;
+
   const m = state.metrics;
   const wc = state.weatherContext;
   const rec = getCurrentRecommendation();
