@@ -27,6 +27,8 @@
   --bottom-nav-height: 72px;
   /* 端末幅いっぱいに追従（WebView / ブラウザ共通）。狭い画面は 100%、広い画面もはみ出さない */
   --app-max-width: 100%;
+  /* fixed ヘッダー分の main 上余白（JS が実測で上書き） */
+  --app-header-offset: 108px;
 }
 
 *,
@@ -46,7 +48,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
-  /* sticky ヘッダー用: body に overflow-x を付けると環境によっては sticky が効かない */
+  /* fixed ヘッダーはビューポート基準のため、横は .app-shell でカット */
   overflow-x: visible;
   font-family: "Noto Sans JP", sans-serif;
   background: var(--color-bg);
@@ -65,16 +67,20 @@ body {
   overflow-x: hidden;
 }
 
-/* ===== Header ===== */
+/* ===== Header（sticky は WebView/overflow 子で壊れやすいので fixed） ===== */
 .app-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
   z-index: 250;
   background: linear-gradient(135deg, #8b1a1a 0%, #a0522d 100%);
   color: #fff;
   padding: 20px 20px 16px;
   padding-top: calc(20px + env(safe-area-inset-top, 0px));
   box-shadow: 0 4px 14px rgba(61, 43, 31, 0.18);
+  box-sizing: border-box;
 }
 
 .app-header h1 {
@@ -94,6 +100,7 @@ body {
 /* ===== Main ===== */
 .app-main {
   padding: 16px;
+  padding-top: calc(16px + var(--app-header-offset, 108px));
   display: flex;
   flex-direction: column;
   gap: 16px;

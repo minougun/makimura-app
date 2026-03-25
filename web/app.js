@@ -449,8 +449,33 @@ function hydrateDomRefs() {
   });
 }
 
+function syncAppHeaderOffset() {
+  const header = document.querySelector(".app-header");
+  if (!header) return;
+  const h = header.offsetHeight;
+  document.documentElement.style.setProperty("--app-header-offset", `${h}px`);
+}
+
+function installAppHeaderOffsetSync() {
+  syncAppHeaderOffset();
+  const header = document.querySelector(".app-header");
+  if (!header) return;
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => syncAppHeaderOffset());
+    ro.observe(header);
+  }
+  window.addEventListener("resize", syncAppHeaderOffset);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", syncAppHeaderOffset);
+  }
+  if (document.fonts && document.fonts.ready) {
+    void document.fonts.ready.then(() => syncAppHeaderOffset());
+  }
+}
+
 function bootstrapMakimura() {
   hydrateDomRefs();
+  installAppHeaderOffsetSync();
   buildMenuCatalog();
   buildRecommendationSettingsControls();
   bindEvents();
