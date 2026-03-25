@@ -13,45 +13,14 @@
         font-size="56" font-weight="900" letter-spacing="6">麺家まきむら</text>
   <text x="600" y="155" text-anchor="middle" fill="#f5e6dc" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif"
         font-size="22" font-weight="500">気分 × 運動量 × 天気で、今日の一杯をご提案</text>
-
   <text x="600" y="270" text-anchor="middle" fill="#3d2b1f" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif"
         font-size="34" font-weight="700">スマホで「今日のおすすめ」を試してみよう</text>
-
-  <!-- 手順アイコン風（簡易図形） -->
-  <g transform="translate(80, 320)">
-    <rect x="0" y="0" width="1000" height="220" rx="20" fill="#fff7eb" stroke="#e8dcc8" stroke-width="3"/>
-    <circle cx="70" cy="110" r="44" fill="#8b1a1a"/>
-    <text x="70" y="125" text-anchor="middle" fill="#fff" font-family="sans-serif" font-size="40" font-weight="700">1</text>
-    <text x="150" y="85" fill="#3d2b1f" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="28" font-weight="700">QRコードを読み取る</text>
-    <text x="150" y="130" fill="#666" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="22">カメラアプリやQRリーダーで、下のコードをスキャンしてWebを開いてください。</text>
-    <text x="150" y="175" fill="#666" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="20">（インストール不要・ブラウザで利用できます）</text>
-  </g>
-
-  <g transform="translate(80, 570)">
-    <rect x="0" y="0" width="1000" height="200" rx="20" fill="#fff7eb" stroke="#e8dcc8" stroke-width="3"/>
-    <circle cx="70" cy="100" r="44" fill="#8b1a1a"/>
-    <text x="70" y="115" text-anchor="middle" fill="#fff" font-family="sans-serif" font-size="40" font-weight="700">2</text>
-    <text x="150" y="75" fill="#3d2b1f" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="28" font-weight="700">ホームで好みを選ぶ（任意）</text>
-    <text x="150" y="120" fill="#666" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="22">空腹度・気分・トッピングの除外などをタップすると、おすすめが変わります。</text>
-    <text x="150" y="160" fill="#666" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="20">歩数は「運動」タブから計測できます（許可が必要な場合があります）。</text>
-  </g>
-
-  <g transform="translate(80, 800)">
-    <rect x="0" y="0" width="1000" height="180" rx="20" fill="#fff7eb" stroke="#e8dcc8" stroke-width="3"/>
-    <circle cx="70" cy="90" r="44" fill="#8b1a1a"/>
-    <text x="70" y="105" text-anchor="middle" fill="#fff" font-family="sans-serif" font-size="40" font-weight="700">3</text>
-    <text x="150" y="70" fill="#3d2b1f" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="28" font-weight="700">ご注文はスタッフへ</text>
-    <text x="150" y="115" fill="#666" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="22">画面はあくまで参考提案です。実際のメニュー・在庫に合わせ、お近くのスタッフにご注文ください。</text>
-  </g>
-
-  <text x="600" y="1080" text-anchor="middle" fill="#3d2b1f" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif"
-        font-size="26" font-weight="700">Webアプリ URL（QRで開きます）</text>
-  <text x="600" y="1125" text-anchor="middle" fill="#8b1a1a" font-family="Consolas, monospace" font-size="24">https://minougun.github.io/makimura-app/</text>
-
-  <rect x="420" y="1160" width="360" height="360" fill="#ffffff" stroke="#e8dcc8" stroke-width="4" rx="12"/>
-  <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAYwAAAGMCAIAAABGWwIdAAAHlElEQVR4nO3dwXFrRRRFUUw5EAIgBoInBgIgEzH5U0xX/cv17qe1xi5ZerJ39eRUf7xer18Aqn797jcA8BWRAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSPuceqE/fv9t6qWu8+dff//nz3g+P2/qGU69nxO+95/nJAWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkDa2HbvxOZmaspT92K176L2nDefYe27OLG5SXSSAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIG11u3dicxN0455u8/lsvuep16ltAKc89f/ihJMUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBabnt3lPVNm5TNn/XiRvv3eNrTlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWk2e5dprYpq23lpl7HLq/DSQpIEykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIC03HbvqZup2ubuRO391O7421T7LjY5SQFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJC2ut175+3VlNr9dJubxKn3c2Lzc/m/+JqTFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkfr9fru98DP2xuuN75Hjfu4iQFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQJlJA2th278Z73E5M7ek272ir7fJqz/BE7d692u/afM9OUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaRdee9e7X662h6qtgXbNPV8amq7xRO2e8BbECkgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIC0z+9+A/+X2j1lU6Z2VTfu1048ddd5YnNzt/mcnaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSRApIG7t3r3ZnXO3usBO17dWN+8cb/35qe8MaJykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSrrx3b3Oftbnhqu3Xpn7Xpht3iydqm7vNZ+gkBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQNrYdq92l9mU2p5ucyv31I3kic1tWk1tj+kkBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQNrYdq+2vZr6XbUd04mpZ1j7LjbV3s+m2v+FkxSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpH6/Xa+SFatu9zXvTane0bX4Xm3fzbb7Oidqu86l7QycpIE2kgDSRAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0sbu3dv01H3W1Oea2rhNffbatvHE5pbwxFOfzwknKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIE2kgDSRAtLG7t07YQ/1tdrnqn1fJ2rvZ8qNW1TbPeAtiBSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkDa2L17m3e0bbpxv7Z5f9+U2o7yqfvHGzeATlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkrd6791Sb+6wbX+dEbeM2pfZ8buQkBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQNrYdq92L9iJ2s5ryo17sdrveqraZvOEkxSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFp7t1bUts2PnUrd+PzOVF7hpvPx0kKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSRApIEykgTaSAtM+pF3KXWed1pty4F6vZ3LjV/n6mOEkBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQNrbdO3HjtujG+/Km1O5fu3Hfd+Pf/InNz+UkBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQNrqdu9EbZu2aWoHN/UMN7+Lqc/+1OdzYvPvx3YP4AeRAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSMtt9/jajfcA1jZum/u+2n2LN+77nKSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSRApIs91bUrtPcHObVrtPsHZ/35TaTnCKkxSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpue3e1P6o5qm7qk2be7ra62xuJGv/g05SQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpK1u9955d7b52ac2XFNqu7PaHYg32vwbc5IC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSRApIEykg7eP1en33ewD4V05SQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpP0Dzbw0vYnLiooAAAAASUVORK5CYII=" x="436" y="1176" width="328" height="328"/>
-
   <text x="600" y="1600" text-anchor="middle" fill="#999" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="18">
     共有の端末・お子さまの利用の際は、個人情報の取り扱いにご注意ください。
   </text>
+  <text x="600" y="1080" text-anchor="middle" fill="#3d2b1f" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif"
+        font-size="26" font-weight="700">Webアプリ URL（QRで開きます）</text>
+  <text x="600" y="1125" text-anchor="middle" fill="#8b1a1a" font-family="Consolas, monospace" font-size="24">https://minougun.github.io/makimura-app/</text>
+  <rect x="420" y="1160" width="360" height="360" fill="#ffffff" stroke="#e8dcc8" stroke-width="4" rx="12"/>
+  <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAc4AAAHOCAIAAACehH7nAAAHfklEQVR42u3cwW3bUBBF0ShgISkgNaT41JAC0snPxhuvQhsePM7MOQVI4qd0QWjxXuecbwBU+u4IAKQWQGoBkFoAqQWQWgCkFkBqAZBaAKkFkFoApBZAagGkFgCpBZBaAKQWQGoBpBYAqQWQWgCpBUBqAaQWAKkFkFoAqQXgnqviRX/9/OFk/+v3n7/OM3Ke2W9yxef023z+PfJUC1BOagGkFkBqAZBaAKkFkFoApBZAagGQWgCpBZBaAKQW4Amu7NtnV44qbN6C6nI3u9yj7Mn7bXqqBWhGagGkFkBqAZBaAKkFkFoApBZAagGQWgCpBZBaAKQW4AmuLh80u8ozb1sre57ZK6p4zXmLbn6bnmoB/IEAgNQCSC2A1AIgtQBSCyC1AEgtgNQCILUAUgsgtQB82OUInq/LulWF7LtX3KOKa++ybuWpFgCpBZBaAKQWQGoBpBYAqQWQWgCpBUBqAaQWAKkFkFqA4Sx7LdVlNarLYlbFa9rr8lQLgNQCSC2A1AIgtQBSC4DUAkgtgNQCILUAUgsgtQBILUAzbZa9Nq8cdVnhmnc375/8ZhbIPNUCSC2A1AIgtQBSC4DUAkgtgNQCILUAUgsgtQBILYDUAvAmvOxlOen5J39/t6nLa95X8Tmz98hv01MtgNQCILUAUgsgtQBILYDUAiC1AFILILUASC2A1AJILQCFXuccpzBGdo2pYl8KPNUCILUAUgsgtQBILYDUAiC1AFILILUASC2A1AJILQBSC9BGybLX/X2p+1tQFa9ZoWJbq+KKupznvJPvco/mvXv2ijzVAvgDAUBqAZBaAKkFkFoApBZAagGQWgCpBZBaAKQWQGoBVihZ9sqqWHi6L7szNG8PKXs3s/e9C1t6nmoB/IEAILUASC2A1AIgtQBSCyC1AEgtgNQCSC0AUgsgtQC8uTZffHaJat4e0rzNqi7XvnmnrcummqdaAKkFkFoApBZAagGkFgCpBZBaAKQWQGoBpBYAqQWQWoAVXuecL3/RivWg7GveN2+va95qVJd337yDlf0deaoFkFoApBZAagGkFgCpBZBaAKkFQGoBpBYAqQWQWgCpBeCTrnmXlN1Yyq4xbV7Mypq3f1Zx7fPK4KkWwB8IAFILgNQCSC0AUgsgtQBSC4DUAkgtgNQCILUAUgvAOyXLXhUrRxXvnr32+7JbZRU2r69lT2meLttvnmoBpBZAagGQWgCpBZBaAKQWQGoBkFoAqQWQWgCkFkBqAVYoWfbavNfVZWcoe/Lz1tc2f84up5T9bXqqBZBaAKkFQGoBpBZAagGQWgCpBUBqAaQWQGoBkFoAqQVY4XXO+fIX7bLsdf9zznv3Lnez4pS6vGb2HlXYvFXmqRZAagGkFgCpBZBaAKkFQGoBpBYAqQWQWgCpBUBqAaQWYIVr3iVt3liquPaKdauKU+qylJa9oi6re/PK4KkWwB8IAFILgNQCSC2A1AIgtQBSC4DUAkgtgNQCILUAUguwwuucE3x720Wp88xee5f7XnFK2c+ZvfbsNzl7RZ5qAfyBACC1AEgtgNQCSC0AUgsgtQBILYDUAkgtAFILILUAK1wVL1qxytNlD2neZlXFFWWX0rrstG3eVJu3FuapFkBqAaQWAKkFkFoAqQVAagGkFgCpBZBaAKkFQGoBpBZghdc5xylEZDeW5r1ml5PP6nKenmoBkFoAqQWQWgCkFkBqAZBaAKkFkFoApBZAagGkFgCpBWipZNmrYuUouwnUZbepwrwtqC7vvlmXlThPtQAPIrUAUgsgtQBILYDUAkgtAFILILUASC2A1AJILQBSC/AEJctefK0uS2mbF7Pmnee8k8+ep6dagHJSCyC1AFILgNQCSC2A1AIgtQBSC4DUAkgtgNQCILUAT3BVvGh26aeLivWg7MJTl29IxRZUF9l1qy7fT0+1AFILgNQCSC2A1AIgtQBSCyC1AEgtgNQCILUAUgsgtQB80pV9+3lLPxVbUBWnNG9bK7tE1WUDbPO2VvbaPdUCSC2A1AIgtQBSCyC1AEgtgNQCILUAUgsgtQBILYDUAqxwdfmgXZaoupxSdrMqezcrTmnzeXb5flr2AvAHAgBSCyC1AFILgNQCSC0AUgsgtQBSC4DUAkgtAFILUO5yBDtVbEFVLCfd/5xd1q2yG2DZe1Txml02wDzVApSTWgCpBZBaAKQWQGoBpBYAqQWQWgCkFkBqAaQWAKkFeALLXg1kN6u6LFFlt6Aqrij7ObPfpS6/Dk+1AFILILUASC2A1AIgtQBSCyC1AEgtgNQCSC0AUgsgtQC802bZq2ITaPO1d9lD6nLyFefZ5TWz62tdyuCpFkBqAaQWAKkFkFoAqQVAagGkFgCpBZBaAKkFQGoBpBZghfCyl32p559SxRpThS77Utm7uXkhL/tN9lQLUE5qAaQWQGoBkFoAqQWQWgCkFkBqAZBaAKkFkFoApBbgCV7nHKcA4KkWQGoBkFoAqQWQWgCkFkBqAaQWAKkFkFoApBZAagGkFgCpBZBaAKQWQGoBpBYAqQWQWgCpBUBqAaQWAKkFkFoAqQVAagGe4B/FMjVB9Kk/uwAAAABJRU5ErkJggg==" x="436" y="1176" width="328" height="328"/>
 </svg>

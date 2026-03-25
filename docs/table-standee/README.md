@@ -2,20 +2,24 @@
 
 | ファイル | 用途 |
 |----------|------|
-| `makimura-table-guide.png` | **そのまま印刷推奨**（使い方＋QR 一体、2400×3600px 相当のラスタ） |
-| `makimura-table-guide.svg` | イラレ／Inkscape で編集・任意サイズ印刷 |
-| `makimura-app-qr.png` | QR のみ単体（別デザインに貼り込み用） |
+| `makimura-table-guide.png` | **印刷推奨**（日本語は Pillow + Windows フォントで描画。文字欠けなし） |
+| `makimura-table-guide.svg` | イラレ／Inkscape 用の簡易版（手順ボックスは PNG に含めず URL+QR 中心） |
+| `makimura-app-qr.png` | QR のみ単体 |
 
 **Web URL（QR の中身）:** `https://minougun.github.io/makimura-app/`
 
 ## 再生成
 
+WSL などでは `/mnt/c/Windows/Fonts/meiryo.ttc` を参照します。  
+別のフォントを使う場合:
+
 ```bash
+export MAKIMURA_TABLE_FONT="/path/to/YourFont.ttf"
 python3 docs/table-standee/generate_table_card.py
 ```
 
-一体 PNG を出すには `cairosvg` と Cairo が必要です（未導入時は SVG と QR のみ出力）。
+依存:
 
 ```bash
-python3 -m pip install qrcode cairosvg --break-system-packages
+python3 -m pip install qrcode pillow --break-system-packages
 ```
