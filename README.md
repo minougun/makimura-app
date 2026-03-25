@@ -81,6 +81,29 @@ $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 
 ### コンパイル
 
+#### 一括: `git pull` → `assembleDebug`（推奨）
+
+`main` を取り込んでからそのまま debug APK まで進めます（`JAVA_HOME` / `ANDROID_HOME` 未設定ならスクリプトがよく使う既定値を設定）。
+
+```powershell
+cd C:\Users\minou\makimura-app
+powershell -ExecutionPolicy Bypass -File .\scripts\pull_and_assemble_debug.ps1
+```
+
+成功後に APK をダウンロードフォルダへコピーする場合:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\pull_and_assemble_debug.ps1 -CopyToDownloads
+```
+
+#### CI（リモートで自動ビルド）
+
+`main` へ **push するたび** GitHub Actions で `assembleDebug` が走り、**Workflow の Artifacts** に `app-debug.apk` が保存されます（リポジトリの **Actions** タブ → 該当ワークフロー → **Artifacts**）。
+
+手元で `git pull` しなくても、最新 `main` に対応した APK をそこから取得できます。
+
+#### 手動コンパイル
+
 Windows PowerShell 例:
 
 ```powershell
