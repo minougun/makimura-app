@@ -132,10 +132,12 @@ body {
   margin-top: 2px;
 }
 
-/* ===== Hero recommendation ===== */
+/* ===== Hero recommendation（全体をクリーム基調に。価格・CTA でアクセント） ===== */
 .hero-card {
-  background: linear-gradient(135deg, #8b1a1a, #b22222);
-  color: #fff;
+  color-scheme: light only;
+  background: linear-gradient(180deg, #fffdf8 0%, #fff4e8 42%, #ffe9d6 100%);
+  color: var(--color-text);
+  border: 1px solid rgba(220, 198, 175, 0.95);
   border-radius: var(--radius-hero);
   padding: 24px 20px;
   position: relative;
@@ -150,7 +152,7 @@ body {
   right: -30px;
   width: 120px;
   height: 120px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(139, 26, 26, 0.07);
   border-radius: 50%;
   pointer-events: none;
 }
@@ -166,18 +168,20 @@ body {
 
 .hero-card__label {
   font-size: 11px;
-  opacity: 0.85;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 1px;
+  color: var(--color-muted-text);
+  opacity: 1;
 }
 
 .hero-tag {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(139, 26, 26, 0.1);
+  color: var(--color-primary);
+  border: 1px solid rgba(139, 26, 26, 0.22);
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 12px;
-  font-weight: 500;
-  backdrop-filter: blur(4px);
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -192,11 +196,11 @@ body {
 
 .hero-card__sub {
   font-size: 13px;
-  opacity: 0.88;
   line-height: 1.5;
   margin: 0;
   position: relative;
   z-index: 1;
+  color: var(--color-muted-text);
 }
 
 .hero-card__tags {
@@ -224,11 +228,12 @@ body {
 .hero-card__amount {
   font-size: 32px;
   font-weight: 900;
+  color: var(--color-primary);
 }
 
 .hero-card__tax {
   font-size: 12px;
-  opacity: 0.75;
+  color: var(--color-muted);
 }
 
 .hero-card__reason-details {
@@ -239,7 +244,8 @@ body {
 
 .hero-card__reason {
   margin-top: 10px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #f0e4d4;
   border-radius: 12px;
   padding: 12px 14px;
 }
@@ -249,6 +255,7 @@ body {
   font-size: 12px;
   line-height: 1.6;
   white-space: pre-line;
+  color: var(--color-text);
 }
 
 /* <summary> … ヒーローCTA（14px）に揃えた丸み */
@@ -258,9 +265,9 @@ body {
   box-sizing: border-box;
   padding: 12px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  border: 1.5px solid var(--color-chip-border);
+  background: var(--color-chip-surface);
+  color: var(--color-text);
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -278,7 +285,7 @@ body {
 }
 
 .hero-card__reason-toggle:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -286,7 +293,8 @@ body {
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.15);
+  background: #f5ebe0;
+  border: 1px solid #ead9c8;
   position: relative;
   z-index: 1;
 }
@@ -295,7 +303,7 @@ body {
   margin: 0 0 4px;
   font-size: 11px;
   font-weight: 600;
-  opacity: 0.85;
+  color: var(--color-muted-text);
 }
 
 .hero-card__crowd-text {
@@ -303,12 +311,13 @@ body {
   font-size: 12px;
   line-height: 1.55;
   white-space: pre-line;
+  color: var(--color-text);
 }
 
 .hero-card__meta {
   margin: 10px 0 0;
   font-size: 11px;
-  opacity: 0.72;
+  color: var(--color-muted);
   text-align: center;
   position: relative;
   z-index: 1;
@@ -317,8 +326,8 @@ body {
 .hero-card__cta {
   margin-top: 16px;
   width: 100%;
-  background: #fff;
-  color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
   border: none;
   border-radius: 14px;
   padding: 14px;
@@ -328,11 +337,12 @@ body {
   font-family: inherit;
   position: relative;
   z-index: 1;
+  box-shadow: 0 2px 8px rgba(139, 26, 26, 0.25);
 }
 
 .hero-card__cta:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
 }
 
 /* ===== Cards ===== */

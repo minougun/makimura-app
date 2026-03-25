@@ -23,6 +23,7 @@ class WebAppActivity : ComponentActivity() {
     private lateinit var assetLoader: WebViewAssetLoader
 
     @SuppressLint("SetJavaScriptEnabled")
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -41,7 +42,8 @@ class WebAppActivity : ComponentActivity() {
             settings.domStorageEnabled = true
             @Suppress("DEPRECATION")
             settings.databaseEnabled = true
-            settings.cacheMode = WebSettings.LOAD_DEFAULT
+            // 同梱の HTML/CSS が WebView ディスクキャッシュに残り、APK 更新後も見た目が古いままになりがちなので無効化
+            settings.cacheMode = WebSettings.LOAD_NO_CACHE
             settings.loadsImagesAutomatically = true
             settings.javaScriptCanOpenWindowsAutomatically = true
             settings.mediaPlaybackRequiresUserGesture = false
@@ -83,6 +85,7 @@ class WebAppActivity : ComponentActivity() {
         )
 
         if (savedInstanceState == null) {
+            webView.clearCache(true)
             webView.loadUrl(BUNDLED_WEB_APP_URL)
         } else {
             webView.restoreState(savedInstanceState)
