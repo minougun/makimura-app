@@ -50,8 +50,8 @@ android {
         applicationId = "com.minou.pedometer"
         minSdk = 26
         targetSdk = 34
-        versionCode = 20260328
-        versionName = "2026.03.28-responsive"
+        versionCode = 20260329
+        versionName = "2026.03.29-sticky-header"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
