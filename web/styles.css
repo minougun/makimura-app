@@ -1,5 +1,7 @@
 /* ===== Design tokens (麺家まきむら リデザイン) ===== */
+/* OS/ブラウザの自動ダークモードで背景が反転しないようライトスキームを固定 */
 :root {
+  color-scheme: light;
   --color-primary: #8b1a1a;
   --color-primary-bright: #b22222;
   --color-bg: #fdf6ec;
@@ -30,6 +32,7 @@
 
 html {
   background: var(--color-bg);
+  color-scheme: light;
 }
 
 body {
@@ -290,7 +293,9 @@ body {
 
 /* ===== Cards ===== */
 .card {
+  background-color: #ffffff;
   background: var(--color-card);
+  color: var(--color-text);
   border-radius: var(--radius-card);
   padding: 20px;
   box-shadow: var(--shadow-card);
