@@ -25,7 +25,8 @@
   --radius-card: 16px;
   --radius-hero: 20px;
   --bottom-nav-height: 72px;
-  --app-max-width: 390px;
+  /* 端末幅いっぱいに追従（WebView / ブラウザ共通）。狭い画面は 100%、広い画面もはみ出さない */
+  --app-max-width: 100%;
 }
 
 *,
@@ -35,13 +36,17 @@
 }
 
 html {
+  width: 100%;
   background: var(--color-bg);
   color-scheme: light only;
 }
 
 body {
   margin: 0;
-  min-height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  overflow-x: hidden;
   font-family: "Noto Sans JP", sans-serif;
   background: var(--color-bg);
   color: var(--color-text);
@@ -49,10 +54,13 @@ body {
 }
 
 .app-shell {
+  width: 100%;
   max-width: var(--app-max-width);
-  margin: 0 auto;
+  margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
+  box-sizing: border-box;
 }
 
 /* ===== Header ===== */
@@ -145,18 +153,6 @@ body {
   box-shadow: var(--shadow-card);
 }
 
-.hero-card::after {
-  content: "";
-  position: absolute;
-  top: -30px;
-  right: -30px;
-  width: 120px;
-  height: 120px;
-  background: rgba(139, 26, 26, 0.07);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
 .hero-card__head {
   display: flex;
   justify-content: space-between;
@@ -186,7 +182,7 @@ body {
 }
 
 .hero-card__title {
-  font-size: 26px;
+  font-size: clamp(1.35rem, 4.2vw + 0.6rem, 1.65rem);
   font-weight: 900;
   margin: 6px 0 4px;
   line-height: 1.25;
@@ -226,7 +222,7 @@ body {
 }
 
 .hero-card__amount {
-  font-size: 32px;
+  font-size: clamp(1.65rem, 5vw + 0.5rem, 2rem);
   font-weight: 900;
   color: var(--color-primary);
 }
@@ -973,10 +969,10 @@ body {
 .bottom-nav {
   position: fixed;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   width: 100%;
-  max-width: var(--app-max-width);
+  max-width: none;
   color-scheme: light only;
   background: var(--color-card);
   border-top: 1px solid #e8dcc8;
@@ -1025,7 +1021,7 @@ body {
   font-size: 11px;
   color: var(--color-muted);
   text-align: center;
-  max-width: var(--app-max-width);
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
 }

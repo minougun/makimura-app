@@ -3,6 +3,7 @@ package com.minou.pedometer
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.os.Bundle
+import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -47,6 +48,12 @@ class WebAppActivity : ComponentActivity() {
             settings.loadsImagesAutomatically = true
             settings.javaScriptCanOpenWindowsAutomatically = true
             settings.mediaPlaybackRequiresUserGesture = false
+            settings.useWideViewPort = true
+            settings.loadWithOverviewMode = false
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
 
             // 端末のダークモードで Web 内容が自動反転しないよう無効化（カードが黒タイル化するのを防ぐ）
             if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
