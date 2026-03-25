@@ -1,0 +1,7 @@
+# Gradle が Android SDK を見つけるための設定です。
+# 手順: このファイルをコピーして local.properties にリネームし、
+#       sdk.dir を自分の PC の SDK パスに合わせてください。
+#       （local.properties は .gitignore 済みでコミットしません）
+#
+# Android Studio 標準の SDK 場所の例（ユーザー名は環境に合わせて変更）:
+sdk.dir=C:/Users/minou/AppData/Local/Android/Sdk

@@ -57,12 +57,36 @@
 
 ## ビルド
 
+### 初回のみ: Android SDK の場所
+
+Gradle は **`local.properties`** または環境変数 **`ANDROID_HOME`** で SDK を探します。どちらか一方でよいです。
+
+**方法 A（推奨）** — プロジェクト直下に `local.properties` を置く:
+
+```powershell
+cd C:\Users\minou\makimura-app
+Copy-Item local.properties.example local.properties
+# メモ帳などで sdk.dir を開き、SDK の実パスに修正（未変更で合うことが多い）
+notepad local.properties
+```
+
+SDK の実体は Android Studio の **Settings → Languages & Frameworks → Android SDK → Android SDK Location** で確認できます。通常は  
+`C:\Users\<ユーザー名>\AppData\Local\Android\Sdk` です。
+
+**方法 B** — 環境変数だけで指定:
+
+```powershell
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+```
+
+### コンパイル
+
 Windows PowerShell 例:
 
 ```powershell
 $env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
 $env:Path="$env:JAVA_HOME\bin;$env:Path"
-cd C:\Users\minou\pedometer-app
+cd C:\Users\minou\makimura-app
 .\gradlew.bat :app:assembleDebug
 ```
 
