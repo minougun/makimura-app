@@ -46,14 +46,12 @@
             <span id="rec-total" class="hero-card__amount">¥0</span>
             <span class="hero-card__tax">税込</span>
           </div>
-          <div class="hero-card__reason-stack">
-            <div id="rec-reason-panel" class="hero-card__reason is-hidden" role="region" aria-label="提案の詳しい説明" hidden>
+          <details id="rec-reason-details" class="hero-card__reason-details">
+            <summary class="hero-card__reason-toggle">提案の詳細</summary>
+            <div class="hero-card__reason" role="region" aria-label="提案の詳しい説明">
               <p id="rec-reason" class="hero-card__reason-text"></p>
             </div>
-            <button id="toggle-recommendation-detail" class="hero-card__reason-toggle" type="button" aria-expanded="false" aria-controls="rec-reason-panel">
-              提案の詳細
-            </button>
-          </div>
+          </details>
           <div id="rec-crowd-note-card" class="hero-card__crowd is-hidden">
             <p class="hero-card__crowd-label">混雑メモ</p>
             <p id="rec-crowd-note" class="hero-card__crowd-text"></p>

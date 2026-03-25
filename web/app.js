@@ -301,7 +301,6 @@ state.crowdNoteMessageIsError = false;
 state.weatherMessage = "";
 state.weatherMessageIsError = false;
 state.weatherLoading = false;
-state.recommendationDetailExpanded = false;
 
 if (state.pendingStorageMigration) {
   persistState();
@@ -351,8 +350,7 @@ const els = {
   recItems: document.getElementById("rec-items"),
   recTotal: document.getElementById("rec-total"),
   recReason: document.getElementById("rec-reason"),
-  recReasonPanel: document.getElementById("rec-reason-panel"),
-  toggleRecommendationDetail: document.getElementById("toggle-recommendation-detail"),
+  recReasonDetails: document.getElementById("rec-reason-details"),
   recCrowdNoteCard: document.getElementById("rec-crowd-note-card"),
   recCrowdNote: document.getElementById("rec-crowd-note"),
   recPreferenceSummary: document.getElementById("rec-preference-summary"),
@@ -463,11 +461,14 @@ function bindEvents() {
     });
   });
 
-  // Home
-  els.toggleRecommendationDetail.addEventListener("click", () => {
-    state.recommendationDetailExpanded = !state.recommendationDetailExpanded;
-    syncRecommendationDetailUi();
-  });
+  // Home（提案の詳細は <details> のネイティブ開閉＋ラベル更新）
+  if (els.recReasonDetails) {
+    els.recReasonDetails.addEventListener("toggle", () => {
+      const summary = els.recReasonDetails.querySelector("summary");
+      if (!summary) return;
+      summary.textContent = els.recReasonDetails.open ? "詳細を閉じる" : "提案の詳細";
+    });
+  }
 
   els.applyRecommendation.addEventListener("click", () => {
     const rec = getCurrentRecommendation();
@@ -775,14 +776,6 @@ function recordRecommendationHistory(recommendation) {
   schedulePersist();
 }
 
-function syncRecommendationDetailUi() {
-  const open = state.recommendationDetailExpanded === true;
-  els.recReasonPanel.classList.toggle("is-hidden", !open);
-  els.recReasonPanel.hidden = !open;
-  els.toggleRecommendationDetail.setAttribute("aria-expanded", open ? "true" : "false");
-  els.toggleRecommendationDetail.textContent = open ? "詳細を閉じる" : "提案の詳細";
-}
-
 // ===== Render: Home =====
 function renderHome() {
   const m = state.metrics;
@@ -819,7 +812,6 @@ function renderHome() {
 
   els.recTotal.textContent = formatYen(rec.totalYen);
   els.recReason.textContent = detailedReason;
-  syncRecommendationDetailUi();
   const crowdNote = state.recommendationPreferences.crowdNote?.trim() ?? "";
   els.recCrowdNote.textContent = crowdNote;
   els.recCrowdNoteCard.classList.toggle("is-hidden", crowdNote.length === 0);
@@ -1289,7 +1281,6 @@ function clearLocalData() {
   state.weatherUpdatedAtEpochMs = 0;
   state.sensorSupported = true;
   state.persistOptIn = false;
-  state.recommendationDetailExpanded = false;
   state.crowdNoteMessage = "";
   state.crowdNoteMessageIsError = false;
   resetCadenceRuntime();
@@ -1298,6 +1289,12 @@ function clearLocalData() {
 
   clearStoredState();
   writePersistPreference(false);
+
+  if (els.recReasonDetails) {
+    els.recReasonDetails.removeAttribute("open");
+    const summary = els.recReasonDetails.querySelector("summary");
+    if (summary) summary.textContent = "提案の詳細";
+  }
 
   setHistoryMessage("", false);
   setTodayMessage("");
