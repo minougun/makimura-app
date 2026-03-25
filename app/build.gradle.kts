@@ -41,7 +41,7 @@ android {
 
     sourceSets {
         getByName("main") {
-            // リポジトリの web/ を APK に同梱（GitHub Pages 非依存）
+            // web/ は GitHub Pages と APK の唯一の UI ソース（README「Web 版と APK 版の同期」参照）
             assets.srcDir(rootProject.file("web"))
         }
     }

@@ -121,7 +121,24 @@ APK:
 3. `./gradlew :app:assembleRelease`（または `.\gradlew.bat :app:assembleRelease`）でビルド
 
 `app/build.gradle.kts` は `Release` タスク時に `keystore.properties` が無い場合ビルド失敗にし、署名ブレを防止します。
-`versionCode` は `20260306` 以上の単調増加を維持してください（小さい値に戻すとダウングレードで更新不可）。
+`versionCode` は時系列で単調増加を維持してください（小さい値に戻すとダウングレードで更新不可）。
+
+## Web 版と APK 版の同期（重要）
+
+ブラウザ向け UI は **`web/` だけ**がソースです。Web と APK で別フォルダを持たない構成です。
+
+| 配布先 | 仕組み |
+|--------|--------|
+| **Web（GitHub Pages）** | `main` へ push すると [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) が **`web/` 全体**をデプロイ |
+| **APK（ランチャーの WebView）** | `app/build.gradle.kts` の `assets.srcDir(rootProject.file("web"))` で **ビルド時に同じ `web/`** を APK に同梱 |
+
+**`web/` を変更したあとに必ず意識すること**
+
+1. **`main` にコミットして push** → Web 本番（GitHub Actions の Pages デプロイ）が最新 `web/` になる  
+2. **APK を最新にしたいとき**は、そのコミットを取り込んだうえで **`.\gradlew.bat :app:assembleDebug`**（または release）を再実行し、**新しい APK をインストール**する  
+   - ビルドし直さない限り、端末上の APK は古い `web/` のまま残る
+
+本番 Web URL: `https://minougun.github.io/makimura-app/`
 
 ## Web版 (iOS/Android/PCブラウザ)
 
@@ -138,7 +155,7 @@ APK:
 起動例:
 
 ```bash
-cd /mnt/c/Users/minou/pedometer-app/web
+cd /path/to/makimura-app/web
 python3 -m http.server 8080
 ```
 
