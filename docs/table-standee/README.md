@@ -2,7 +2,7 @@
 
 | ファイル | 用途 |
 |----------|------|
-| `makimura-table-guide.png` | **印刷推奨**（日本語は Pillow + Windows フォントで描画。文字欠けなし） |
+| `makimura-table-guide.png` | **印刷推奨**（使い方・**iOS/Android のホーム画面に追加**・QR を含む。Pillow + Windows フォント） |
 | `makimura-table-guide.svg` | イラレ／Inkscape 用の簡易版（手順ボックスは PNG に含めず URL+QR 中心） |
 | `makimura-app-qr.png` | QR のみ単体 |
 

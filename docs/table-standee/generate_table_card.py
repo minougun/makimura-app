@@ -88,7 +88,7 @@ def _paste_qr(base: Image.Image, qr_img: Image.Image, dest_center_x: int, dest_t
 
 
 def render_table_guide_png(qr_img: Image.Image) -> None:
-    W, H = 2400, 3600
+    W, H = 2400, 4500
     M = 160
     text_w = W - 2 * M
     inner_left = M + 280  # 番号丸の右から本文
@@ -183,6 +183,65 @@ def render_table_guide_png(qr_img: Image.Image) -> None:
             ty = bbox[3] + 10
 
         y += card_h + 40
+
+    # --- ホーム画面に追加（iOS / Android）---
+    pwa_title = "ホーム画面に追加（任意）"
+    pwa_intro = (
+        "次回からすぐ開けるように、スマホのホームにアイコンを置けます。"
+        "お客様の端末・ブラウザによって表示や名称が異なります。"
+    )
+    pwa_ios_head = "【iPhone・iPad — Safari】"
+    pwa_ios_lines = [
+        "1. 「Safari」でこのページを開いた状態にします。"
+        "（Chromeアプリだけでは「ホーム画面に追加」が出ないことがあります）",
+        "2. 画面下の「共有」ボタン（□に↑のマーク）をタップします。",
+        "3. 下の方までスクロールし、「ホーム画面に追加」をタップします。",
+        "4. 右上の「追加」をタップして完了です。",
+    ]
+    pwa_and_head = "【Android — Chrome など】"
+    pwa_and_lines = [
+        "1. 「Chrome」などのブラウザでこのページを開きます。",
+        "2. 右上の「⋮」メニューをタップします。",
+        "3. 「ホーム画面に追加」「アプリをインストール」「インストール」などをタップします。"
+        "（機種・ブラウザで文言が異なります）",
+        "4. 表示に従って追加・インストールを完了してください。",
+        "※ Samsung Internet や Microsoft Edge などでも、メニュー内に同様の項目がある場合があります。",
+    ]
+
+    pwa_body_lines: list[tuple[ImageFont.FreeTypeFont, str, str]] = []
+    for line in _wrap_text(pwa_intro, f_small, draw, text_w - 80):
+        pwa_body_lines.append((f_small, line, "#666666"))
+    pwa_body_lines.append((f_step, pwa_ios_head, "#8b1a1a"))
+    for para in pwa_ios_lines:
+        for line in _wrap_text(para, f_small, draw, text_w - 80):
+            pwa_body_lines.append((f_small, line, "#444444"))
+    pwa_body_lines.append((f_step, pwa_and_head, "#8b1a1a"))
+    for para in pwa_and_lines:
+        for line in _wrap_text(para, f_small, draw, text_w - 80):
+            pwa_body_lines.append((f_small, line, "#444444"))
+
+    title_h = len(_wrap_text(pwa_title, f_step, draw, text_w - 80)) * 58
+    body_h = len(pwa_body_lines) * 48 + 80
+    pwa_card_h = 60 + title_h + body_h + 50
+
+    draw.rounded_rectangle(
+        (M, y, W - M, y + pwa_card_h),
+        radius=36,
+        fill="#fff7eb",
+        outline="#e8dcc8",
+        width=4,
+    )
+    ty = y + 44
+    for tl in _wrap_text(pwa_title, f_step, draw, text_w - 80):
+        draw.text((M + 48, ty), tl, font=f_step, fill="#3d2b1f")
+        bbox = draw.textbbox((M + 48, ty), tl, font=f_step)
+        ty = bbox[3] + 10
+    ty += 8
+    for font, line, color in pwa_body_lines:
+        draw.text((M + 48, ty), line, font=font, fill=color)
+        bbox = draw.textbbox((M + 48, ty), line, font=font)
+        ty = bbox[3] + 8
+    y += pwa_card_h + 40
 
     y += 20
     draw.text((W // 2, y), "Webアプリ URL（QRで開きます）", font=f_step, fill="#3d2b1f", anchor="mt")
