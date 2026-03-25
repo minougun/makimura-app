@@ -1,22 +1,26 @@
 /* ===== Design tokens (麺家まきむら リデザイン) ===== */
 /* OS/ブラウザの自動ダークモードで背景が反転しないようライトスキームを固定 */
 :root {
-  color-scheme: light;
+  /* light only: OS のダーク配色でコンポーネント背景が反転しにくくする */
+  color-scheme: light only;
   --color-primary: #8b1a1a;
   --color-primary-bright: #b22222;
-  --color-bg: #fdf6ec;
-  --color-card: #ffffff;
+  --color-bg: #f9f1e4;
+  /* カード・タイルは白ではなく薄いクリーム（スクリーンショットの黒タイル対策＋指定デザイン） */
+  --color-card: #fff7eb;
+  --color-card-elevated: #fffdf6;
   --color-text: #3d2b1f;
   --color-muted: #999999;
   --color-muted-text: #666666;
-  --color-chip-border: #dddddd;
+  --color-chip-border: #e8dcc8;
+  --color-chip-surface: #fffefb;
   --color-exclude-bg: #fff0f0;
   --color-exclude-text: #cc4444;
   --color-exclude-border: #ffcccc;
   --color-tracking: #4caf50;
   --color-danger: #e53935;
-  --color-weather-bar-bg: #fff8ee;
-  --color-weather-bar-border: #f0e0c8;
+  --color-weather-bar-bg: #fff5e6;
+  --color-weather-bar-border: #edd9c0;
   --shadow-card: 0 2px 12px rgba(61, 43, 31, 0.06);
   --radius-card: 16px;
   --radius-hero: 20px;
@@ -32,7 +36,7 @@
 
 html {
   background: var(--color-bg);
-  color-scheme: light;
+  color-scheme: light only;
 }
 
 body {
@@ -100,6 +104,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  color-scheme: light only;
   background: var(--color-weather-bar-bg);
   border: 1px solid var(--color-weather-bar-border);
   border-radius: 12px;
@@ -332,12 +337,19 @@ body {
 
 /* ===== Cards ===== */
 .card {
-  background-color: #ffffff;
+  color-scheme: light only;
+  background-color: var(--color-card);
   background: var(--color-card);
   color: var(--color-text);
+  border: 1px solid rgba(232, 216, 196, 0.85);
   border-radius: var(--radius-card);
   padding: 20px;
   box-shadow: var(--shadow-card);
+}
+
+.card.mood-section {
+  background: var(--color-card-elevated);
+  border-color: rgba(220, 200, 175, 0.9);
 }
 
 .card h2,
@@ -431,7 +443,7 @@ body {
   padding: 8px 16px;
   border-radius: 24px;
   border: 1.5px solid var(--color-chip-border);
-  background: #fff;
+  background: var(--color-chip-surface);
   font-size: 13px;
   font-weight: 500;
   color: var(--color-muted-text);
@@ -556,8 +568,8 @@ body {
 .menu-chip {
   padding: 10px 14px;
   border-radius: 12px;
-  border: 1.5px solid #e8e0d6;
-  background: #fff;
+  border: 1.5px solid var(--color-chip-border);
+  background: var(--color-chip-surface);
   font-size: 13px;
   display: inline-flex;
   align-items: center;
@@ -616,7 +628,7 @@ body {
 }
 
 .btn-outline {
-  background: #fff;
+  background: var(--color-chip-surface);
   color: var(--color-primary);
   border: 1.5px solid var(--color-primary);
 }
@@ -631,7 +643,7 @@ body {
 .btn-danger-outline {
   width: 100%;
   margin-top: 12px;
-  background: #fff;
+  background: var(--color-chip-surface);
   color: var(--color-danger);
   border: 1.5px solid #ffcccc;
   font-weight: 600;
@@ -955,8 +967,9 @@ body {
   transform: translateX(-50%);
   width: 100%;
   max-width: var(--app-max-width);
-  background: #fff;
-  border-top: 1px solid #f0e8dd;
+  color-scheme: light only;
+  background: var(--color-card);
+  border-top: 1px solid #e8dcc8;
   display: flex;
   padding: 8px 0 calc(12px + env(safe-area-inset-bottom, 0px));
   z-index: 100;
@@ -1019,7 +1032,7 @@ body {
   border-radius: 999px;
   min-height: 34px;
   padding: 0 12px;
-  background: #fff;
+  background: var(--color-chip-surface);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
