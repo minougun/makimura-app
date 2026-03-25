@@ -301,6 +301,7 @@ state.crowdNoteMessageIsError = false;
 state.weatherMessage = "";
 state.weatherMessageIsError = false;
 state.weatherLoading = false;
+state.recommendationDetailExpanded = false;
 
 if (state.pendingStorageMigration) {
   persistState();
@@ -350,6 +351,8 @@ const els = {
   recItems: document.getElementById("rec-items"),
   recTotal: document.getElementById("rec-total"),
   recReason: document.getElementById("rec-reason"),
+  recReasonPanel: document.getElementById("rec-reason-panel"),
+  toggleRecommendationDetail: document.getElementById("toggle-recommendation-detail"),
   recCrowdNoteCard: document.getElementById("rec-crowd-note-card"),
   recCrowdNote: document.getElementById("rec-crowd-note"),
   recPreferenceSummary: document.getElementById("rec-preference-summary"),
@@ -461,6 +464,11 @@ function bindEvents() {
   });
 
   // Home
+  els.toggleRecommendationDetail.addEventListener("click", () => {
+    state.recommendationDetailExpanded = !state.recommendationDetailExpanded;
+    syncRecommendationDetailUi();
+  });
+
   els.applyRecommendation.addEventListener("click", () => {
     const rec = getCurrentRecommendation();
     state.orderSelectedNames = rec.items
@@ -767,6 +775,14 @@ function recordRecommendationHistory(recommendation) {
   schedulePersist();
 }
 
+function syncRecommendationDetailUi() {
+  const open = state.recommendationDetailExpanded === true;
+  els.recReasonPanel.classList.toggle("is-hidden", !open);
+  els.recReasonPanel.hidden = !open;
+  els.toggleRecommendationDetail.setAttribute("aria-expanded", open ? "true" : "false");
+  els.toggleRecommendationDetail.textContent = open ? "詳細を閉じる" : "提案の詳細";
+}
+
 // ===== Render: Home =====
 function renderHome() {
   const m = state.metrics;
@@ -803,6 +819,7 @@ function renderHome() {
 
   els.recTotal.textContent = formatYen(rec.totalYen);
   els.recReason.textContent = detailedReason;
+  syncRecommendationDetailUi();
   const crowdNote = state.recommendationPreferences.crowdNote?.trim() ?? "";
   els.recCrowdNote.textContent = crowdNote;
   els.recCrowdNoteCard.classList.toggle("is-hidden", crowdNote.length === 0);
@@ -1272,6 +1289,7 @@ function clearLocalData() {
   state.weatherUpdatedAtEpochMs = 0;
   state.sensorSupported = true;
   state.persistOptIn = false;
+  state.recommendationDetailExpanded = false;
   state.crowdNoteMessage = "";
   state.crowdNoteMessageIsError = false;
   resetCadenceRuntime();

@@ -91,6 +91,10 @@ body {
   display: none !important;
 }
 
+.is-hidden {
+  display: none !important;
+}
+
 /* ===== Weather bar ===== */
 .weather-bar {
   display: flex;
@@ -222,13 +226,16 @@ body {
   opacity: 0.75;
 }
 
-.hero-card__reason {
+.hero-card__reason-stack {
   margin-top: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-card__reason {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   padding: 12px 14px;
-  position: relative;
-  z-index: 1;
 }
 
 .hero-card__reason-text {
@@ -236,6 +243,31 @@ body {
   font-size: 12px;
   line-height: 1.6;
   white-space: pre-line;
+}
+
+.hero-card__reason-toggle {
+  display: block;
+  width: 100%;
+  margin-top: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.hero-card__reason:not(.is-hidden) ~ .hero-card__reason-toggle {
+  margin-top: 10px;
+}
+
+.hero-card__reason-toggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .hero-card__crowd {
