@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const rootDir = "/mnt/c/Users/minou/pedometer-app/web";
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const appJs = fs.readFileSync(path.join(rootDir, "app.js"), "utf8");
 const swJs = fs.readFileSync(path.join(rootDir, "sw.js"), "utf8");
 const indexHtml = fs.readFileSync(path.join(rootDir, "index.html"), "utf8");

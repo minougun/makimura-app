@@ -185,6 +185,18 @@ function moodLabel(mood) {
   return "おまかせ";
 }
 
+function formatHeroTitle(rec) {
+  return rec.items.map((i) => i.name).join(" + ");
+}
+
+function weatherEmoji(condition) {
+  if (condition === "SUNNY") return "☀️";
+  if (condition === "CLOUDY") return "☁️";
+  if (condition === "RAINY") return "🌧";
+  if (condition === "SNOWY") return "❄️";
+  return "🌤";
+}
+
 function recommendationToppingNames(rec) {
   return rec.items
     .map((item) => item.name)
@@ -289,7 +301,6 @@ state.crowdNoteMessageIsError = false;
 state.weatherMessage = "";
 state.weatherMessageIsError = false;
 state.weatherLoading = false;
-state.showDetailedReason = false;
 
 if (state.pendingStorageMigration) {
   persistState();
@@ -328,23 +339,21 @@ const els = {
   tabPanels: document.querySelectorAll("[data-tab-panel]"),
 
   // Home
-  homeHighlightList: document.getElementById("home-highlight-list"),
+  homeWeatherIcon: document.getElementById("home-weather-icon"),
+  homeWeatherTemp: document.getElementById("home-weather-temp"),
+  homeWeatherDesc: document.getElementById("home-weather-desc"),
+  homeHeroTitle: document.getElementById("home-hero-title"),
+  homeHeroPrefs: document.getElementById("home-hero-prefs"),
   homeSummary: document.getElementById("home-summary"),
   applyRecommendation: document.getElementById("apply-recommendation"),
-  recCity: document.getElementById("rec-city"),
-  recWeather: document.getElementById("rec-weather"),
   recTier: document.getElementById("rec-tier"),
   recItems: document.getElementById("rec-items"),
   recTotal: document.getElementById("rec-total"),
-  toggleReasonDetail: document.getElementById("toggle-reason-detail"),
   recReason: document.getElementById("rec-reason"),
   recCrowdNoteCard: document.getElementById("rec-crowd-note-card"),
   recCrowdNote: document.getElementById("rec-crowd-note"),
   recPreferenceSummary: document.getElementById("rec-preference-summary"),
   recUpdated: document.getElementById("rec-updated"),
-  homeSteps: document.getElementById("home-steps"),
-  homeCalories: document.getElementById("home-calories"),
-  homeBrisk: document.getElementById("home-brisk"),
   homeRecommendationHistory: document.getElementById("home-recommendation-history"),
 
   // Order
@@ -367,9 +376,9 @@ const els = {
   trackingStatus: document.getElementById("tracking-status"),
   sensorStatus: document.getElementById("sensor-status"),
   todayMessage: document.getElementById("today-message"),
+  activityTrackingBar: document.getElementById("activity-tracking-bar"),
   startButton: document.getElementById("start-tracking"),
   stopButton: document.getElementById("stop-tracking"),
-  manualStepButton: document.getElementById("manual-step"),
   resetTodayButton: document.getElementById("reset-today"),
   metricSteps: document.getElementById("metric-steps"),
   metricDistance: document.getElementById("metric-distance"),
@@ -378,7 +387,6 @@ const els = {
   metricBriskDuration: document.getElementById("metric-brisk-duration"),
   metricBriskDistance: document.getElementById("metric-brisk-distance"),
   metricRunningDuration: document.getElementById("metric-running-duration"),
-  metricRunningDistance: document.getElementById("metric-running-distance"),
   lastUpdated: document.getElementById("last-updated"),
 
   // History
@@ -400,7 +408,7 @@ const els = {
   // Settings - profile
   inputHeight: document.getElementById("input-height"),
   inputWeight: document.getElementById("input-weight"),
-  sexChips: document.querySelectorAll(".chip[data-sex]"),
+  sexChips: document.querySelectorAll("#sex-chips .chip[data-sex]"),
   inputStrideScale: document.getElementById("input-stride-scale"),
   strideScaleLabel: document.getElementById("stride-scale-label"),
   previewWalk: document.getElementById("preview-walk"),
@@ -453,11 +461,6 @@ function bindEvents() {
   });
 
   // Home
-  els.toggleReasonDetail.addEventListener("click", () => {
-    state.showDetailedReason = !state.showDetailedReason;
-    renderHome();
-  });
-
   els.applyRecommendation.addEventListener("click", () => {
     const rec = getCurrentRecommendation();
     state.orderSelectedNames = rec.items
@@ -512,12 +515,6 @@ function bindEvents() {
 
   els.stopButton.addEventListener("click", () => {
     stopTracking();
-  });
-
-  els.manualStepButton.addEventListener("click", () => {
-    ensureCurrentDay();
-    recordStep(Date.now());
-    setTodayMessage("手動で1歩追加しました。");
   });
 
   els.resetTodayButton.addEventListener("click", () => {
@@ -658,7 +655,9 @@ function setActiveTab(tab) {
   state.activeTab = tab;
 
   els.tabButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.tab === tab);
+    const active = button.dataset.tab === tab;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
   });
 
   els.tabPanels.forEach((panel) => {
@@ -716,7 +715,7 @@ function renderMetricRows(container, items, cacheKeyName) {
     const row = document.createElement("div");
     row.className = "metric-row";
     const label = document.createElement("span");
-    label.textContent = item.name;
+    label.textContent = item.name === "ラーメン" ? "ラーメン（必須）" : item.name;
     const value = document.createElement("span");
     value.textContent = formatYen(item.priceYen);
     row.append(label, value);
@@ -773,8 +772,6 @@ function renderHome() {
   const m = state.metrics;
   const wc = state.weatherContext;
   const rec = getCurrentRecommendation();
-  const toppingNames = recommendationToppingNames(rec);
-  const shortReason = rec.reason.split(" / ").filter(Boolean)[0] ?? "";
   const detailedReason = detailedRecommendationReason(
     state.metrics,
     state.weatherContext,
@@ -784,79 +781,73 @@ function renderHome() {
 
   recordRecommendationHistory(rec);
 
-  els.homeSummary.textContent = homeRecommendationSummary(m, wc, rec);
-  els.homeHighlightList.replaceChildren(
-    ...(
-      toppingNames.length > 0
-        ? toppingNames.map((name) => {
-            const item = document.createElement("li");
-            item.textContent = name;
-            return item;
-          })
-        : [(() => {
-            const item = document.createElement("li");
-            item.textContent = "定番のラーメン構成";
-            return item;
-          })()]
-    ),
-  );
+  els.homeWeatherIcon.textContent = weatherEmoji(wc.condition);
+  els.homeWeatherTemp.textContent = `${wc.temperatureC}°C`;
+  els.homeWeatherDesc.textContent = `大阪市東淀川区 / ${weatherLabel(wc.condition)}`;
 
-  els.recCity.textContent = SHOP_ADDRESS;
-  els.recWeather.textContent = `${weatherLabel(wc.condition)} / ${wc.temperatureC}°C`;
+  els.homeHeroTitle.textContent = formatHeroTitle(rec);
+  els.homeSummary.textContent = homeRecommendationSummary(m, wc, rec);
+
+  els.homeHeroPrefs.replaceChildren();
+  const prefAppetite = document.createElement("span");
+  prefAppetite.className = "hero-tag";
+  prefAppetite.textContent = `空腹度: ${appetiteLabel(state.recommendationPreferences.appetiteLevel)}`;
+  const prefMood = document.createElement("span");
+  prefMood.className = "hero-tag";
+  prefMood.textContent = `気分: ${moodLabel(state.recommendationPreferences.moodPreference)}`;
+  els.homeHeroPrefs.append(prefAppetite, prefMood);
+
   els.recTier.textContent = tierLabel(rec.tier);
 
   renderMetricRows(els.recItems, rec.items, "recommendationItemsKey");
 
   els.recTotal.textContent = formatYen(rec.totalYen);
-  els.toggleReasonDetail.textContent = state.showDetailedReason ? "ひとことで見る" : "詳しく見る";
-  els.recReason.textContent = state.showDetailedReason ? detailedReason : shortReason;
+  els.recReason.textContent = detailedReason;
   const crowdNote = state.recommendationPreferences.crowdNote?.trim() ?? "";
   els.recCrowdNote.textContent = crowdNote;
-  els.recCrowdNoteCard.classList.toggle("is-hidden", !state.showDetailedReason || crowdNote.length === 0);
+  els.recCrowdNoteCard.classList.toggle("is-hidden", crowdNote.length === 0);
   els.recPreferenceSummary.textContent = recommendationPreferenceSummary(state.recommendationPreferences);
   els.recUpdated.textContent = state.weatherUpdatedAtEpochMs > 0
-    ? `天気更新: ${formatDateTime(state.weatherUpdatedAtEpochMs)}`
+    ? `最終更新: ${formatDateTime(state.weatherUpdatedAtEpochMs)}`
     : "";
 
-  els.homeSteps.textContent = `${m.steps} 歩`;
-  els.homeCalories.textContent = formatCalories(m.totalCaloriesKcal);
-  els.homeBrisk.textContent = formatDuration(m.briskDurationMs);
   renderHomeRecommendationHistory();
 }
 
 // ===== Render: Order =====
 function buildMenuCatalog() {
   MENU_CATEGORIES.forEach((category) => {
+    if (category.id === "RAMEN") return;
     const items = MENU_ITEMS.filter((item) => item.category === category.id);
     if (items.length === 0) return;
 
-    const section = document.createElement("article");
-    section.className = "card";
+    const section = document.createElement("div");
+    section.className = "menu-catalog-section";
 
-    const title = document.createElement("h3");
+    const title = document.createElement("p");
+    title.className = "category-label";
     title.textContent = category.label;
     section.appendChild(title);
 
     const chipGroup = document.createElement("div");
-    chipGroup.className = "chip-group";
+    chipGroup.className = "menu-grid";
 
     items.forEach((item) => {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "menu-chip";
       chip.dataset.itemName = item.name;
-      chip.textContent = `${item.name}　${formatYen(item.priceYen)}`;
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "menu-chip__name";
+      nameSpan.textContent = item.name;
+      const priceSpan = document.createElement("span");
+      priceSpan.className = "menu-chip__price";
+      priceSpan.textContent = formatYen(item.priceYen);
+      chip.append(nameSpan, priceSpan);
 
-      if (item.required) {
-        chip.classList.add("is-active");
-        chip.disabled = true;
-      }
-
-      if (!item.required) {
-        chip.addEventListener("click", () => {
-          toggleOrderItem(item.name);
-        });
-      }
+      chip.addEventListener("click", () => {
+        toggleOrderItem(item.name);
+      });
 
       chipGroup.appendChild(chip);
     });
@@ -935,10 +926,9 @@ function buildRecommendationSettingsControls() {
 
 function renderRecommendationPreferenceChips() {
   els.excludeToppingChips.querySelectorAll("[data-exclude-topping]").forEach((chip) => {
-    chip.classList.toggle(
-      "is-active",
-      state.recommendationPreferences.excludedToppings.includes(chip.dataset.excludeTopping),
-    );
+    const excluded = state.recommendationPreferences.excludedToppings.includes(chip.dataset.excludeTopping);
+    chip.classList.toggle("is-excluded", excluded);
+    chip.classList.remove("is-active");
   });
   els.appetiteChips.querySelectorAll("[data-appetite]").forEach((chip) => {
     chip.classList.toggle("is-active", chip.dataset.appetite === state.recommendationPreferences.appetiteLevel);
@@ -1006,7 +996,7 @@ function renderCurrentOrder() {
 
   renderSimpleList(els.orderDiffAdded, addedItems, "追加なし");
   renderSimpleList(els.orderDiffRemoved, removedItems, "外した項目なし");
-  els.orderDiffCard.classList.remove("is-hidden");
+  els.orderDiffCard.classList.add("is-hidden");
 }
 
 // ===== Render: Activity =====
@@ -1014,8 +1004,9 @@ function renderActivity() {
   const metrics = state.metrics;
 
   const isTracking = state.isTracking;
+  els.activityTrackingBar.classList.toggle("tracking-status--active", isTracking);
+  els.activityTrackingBar.classList.toggle("tracking-status--stopped", !isTracking);
   els.trackingStatus.textContent = isTracking ? "計測中" : "停止中";
-  els.trackingStatus.classList.toggle("stopped", !isTracking);
 
   let sensorText = "センサー利用可";
   if (!supportsDeviceMotion()) {
@@ -1030,14 +1021,14 @@ function renderActivity() {
   els.startButton.disabled = isTracking || runtime.startInProgress;
   els.stopButton.disabled = !isTracking;
 
-  els.metricSteps.textContent = `${metrics.steps} 歩`;
-  els.metricDistance.textContent = formatDistance(metrics.totalDistanceMeters);
+  els.metricSteps.textContent = metrics.steps.toLocaleString("ja-JP");
+  const kmTotal = metrics.totalDistanceMeters / 1000;
+  els.metricDistance.textContent = kmTotal.toFixed(1);
   els.metricSpeed.textContent = formatSpeed(averageSpeedMps(metrics));
-  els.metricCalories.textContent = formatCalories(metrics.totalCaloriesKcal);
+  els.metricCalories.textContent = String(Math.round(metrics.totalCaloriesKcal));
   els.metricBriskDuration.textContent = formatDuration(metrics.briskDurationMs);
   els.metricBriskDistance.textContent = formatDistance(metrics.briskDistanceMeters);
   els.metricRunningDuration.textContent = formatDuration(metrics.runningDurationMs);
-  els.metricRunningDistance.textContent = formatDistance(metrics.runningDistanceMeters);
 
   els.lastUpdated.textContent = metrics.lastUpdatedEpochMs > 0
     ? `最終更新: ${formatDateTime(metrics.lastUpdatedEpochMs)}`
@@ -1281,7 +1272,6 @@ function clearLocalData() {
   state.weatherUpdatedAtEpochMs = 0;
   state.sensorSupported = true;
   state.persistOptIn = false;
-  state.showDetailedReason = false;
   state.crowdNoteMessage = "";
   state.crowdNoteMessageIsError = false;
   resetCadenceRuntime();
@@ -1836,12 +1826,20 @@ function renderHomeRecommendationHistory() {
   const fragment = document.createDocumentFragment();
   state.recommendationHistory.slice(0, 3).forEach((entry) => {
     const row = document.createElement("div");
-    row.className = "metric-row";
-    const label = document.createElement("span");
-    label.textContent = `${formatDateTime(entry.createdAtEpochMs)} / ${tierLabel(entry.tier)}`;
-    const value = document.createElement("span");
-    value.textContent = formatYen(entry.totalYen);
-    row.append(label, value);
+    row.className = "history-item";
+    const left = document.createElement("div");
+    left.className = "history-item__left";
+    const dateEl = document.createElement("div");
+    dateEl.className = "history-item__date";
+    dateEl.textContent = formatDateTime(entry.createdAtEpochMs);
+    const typeEl = document.createElement("div");
+    typeEl.className = "history-item__type";
+    typeEl.textContent = `${tierLabel(entry.tier)}構成`;
+    left.append(dateEl, typeEl);
+    const priceEl = document.createElement("div");
+    priceEl.className = "history-item__price";
+    priceEl.textContent = formatYen(entry.totalYen);
+    row.append(left, priceEl);
     fragment.appendChild(row);
   });
   els.homeRecommendationHistory.appendChild(fragment);

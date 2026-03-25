@@ -2,110 +2,99 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f0d4a0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#8B1A1A">
   <title>麺家まきむら</title>
-  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="shortcut icon" href="./favicon.ico">
   <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <div class="app-shell">
-    <header class="hero">
+    <header class="app-header">
       <h1>麺家まきむら</h1>
-      <p class="hero-subtitle">その日の気分と運動量と天気で、今日の一杯を提案</p>
+      <p class="app-header-tagline">気分 x 運動量 x 天気で、今日の一杯を提案</p>
     </header>
 
-    <nav class="tabs" aria-label="Main tabs">
-      <button class="tab-button is-active" data-tab="home" type="button">ホーム</button>
-      <button class="tab-button" data-tab="order" type="button">注文</button>
-      <button class="tab-button" data-tab="activity" type="button">運動</button>
-      <button class="tab-button" data-tab="settings" type="button">設定</button>
-    </nav>
-
-    <main>
+    <main class="app-main">
       <!-- ホーム -->
       <section id="tab-home" class="tab-panel" data-tab-panel="home">
-        <article class="card">
-          <h2>おすすめの好み設定</h2>
-          <p class="muted">苦手なトッピングや今の気分をおすすめに反映します。</p>
-
-          <p class="muted" style="margin-top:12px">空腹度</p>
-          <div id="appetite-chips" class="chip-group" style="margin-top:8px"></div>
-
-          <p class="muted" style="margin-top:12px">気分</p>
-          <div id="mood-chips" class="chip-group" style="margin-top:8px"></div>
-
-          <p class="muted" style="margin-top:12px">除外するトッピング</p>
-          <div id="exclude-topping-chips" class="chip-group" style="margin-top:8px"></div>
-
-        </article>
-
-        <article class="card">
-          <h2>本日の推しトッピング</h2>
-          <ul id="home-highlight-list" class="highlight-list"></ul>
-          <p id="home-summary" class="muted"></p>
-          <div class="button-row">
-            <button id="apply-recommendation" class="btn primary" type="button">このおすすめを注文に反映</button>
+        <div class="weather-bar" aria-live="polite">
+          <div id="home-weather-icon" class="weather-bar__icon" aria-hidden="true">🌤</div>
+          <div class="weather-bar__info">
+            <div id="home-weather-temp" class="weather-bar__temp">—°C</div>
+            <div id="home-weather-desc" class="weather-bar__desc">天気を読み込み中…</div>
           </div>
-        </article>
+        </div>
 
-        <article class="card">
-          <h2>本日のおすすめ</h2>
-          <p id="rec-city" class="muted"></p>
-          <dl class="metrics-grid" id="rec-meta">
-            <div><dt>天気</dt><dd id="rec-weather">—</dd></div>
-            <div><dt>提案タイプ</dt><dd id="rec-tier">—</dd></div>
-          </dl>
-          <div id="rec-items" class="metric-list"></div>
-          <div class="metric-row total-row">
-            <span>合計</span><span id="rec-total">¥0</span>
+        <div class="hero-card">
+          <div class="hero-card__head">
+            <span class="hero-card__label">TODAY'S RECOMMENDATION</span>
+            <span id="rec-tier" class="hero-tag">—</span>
           </div>
-          <div class="button-row" style="margin-top:8px">
-            <button id="toggle-reason-detail" class="btn" type="button">詳しく見る</button>
+          <div id="home-hero-title" class="hero-card__title">—</div>
+          <p id="home-summary" class="hero-card__sub"></p>
+          <div id="home-hero-prefs" class="hero-card__tags" aria-label="反映中の好み"></div>
+          <div class="hero-card__price">
+            <span id="rec-total" class="hero-card__amount">¥0</span>
+            <span class="hero-card__tax">税込</span>
           </div>
-          <section class="recommendation-detail-panel">
-            <p class="detail-label">提案理由</p>
-            <p id="rec-reason" class="recommendation-lead"></p>
-          </section>
-          <section class="recommendation-note-card" style="margin-top:10px">
-            <p class="detail-label">反映中の条件</p>
-            <p id="rec-preference-summary" class="muted"></p>
-          </section>
-          <section id="rec-crowd-note-card" class="recommendation-memo-card is-hidden" style="margin-top:10px">
-            <p class="detail-label">混雑メモ</p>
-            <p id="rec-crowd-note" class="recommendation-memo-text"></p>
-          </section>
-          <p id="rec-updated" class="detail-meta"></p>
+          <div class="hero-card__reason">
+            <p id="rec-reason" class="hero-card__reason-text"></p>
+          </div>
+          <div id="rec-crowd-note-card" class="hero-card__crowd is-hidden">
+            <p class="hero-card__crowd-label">混雑メモ</p>
+            <p id="rec-crowd-note" class="hero-card__crowd-text"></p>
+          </div>
+          <p id="rec-updated" class="hero-card__meta"></p>
+          <button id="apply-recommendation" class="hero-card__cta" type="button">この内容で注文に反映</button>
+        </div>
+
+        <div id="rec-items" class="is-hidden" aria-hidden="true" hidden></div>
+        <p id="rec-preference-summary" class="is-hidden" aria-hidden="true" hidden></p>
+
+        <article class="card mood-section">
+          <div class="card-header">
+            <div class="card-header__icon card-header__icon--mood" aria-hidden="true">🎯</div>
+            <h2 class="card-header__title">今日の気分</h2>
+          </div>
+          <label class="mood-section__label">空腹度</label>
+          <div id="appetite-chips" class="chip-row" role="group" aria-label="空腹度"></div>
+          <label class="mood-section__label">気分</label>
+          <div id="mood-chips" class="chip-row" role="group" aria-label="気分"></div>
+          <label class="mood-section__label">除外トッピング</label>
+          <div id="exclude-topping-chips" class="chip-row"></div>
         </article>
 
         <article class="card">
-          <h3>最近のおすすめ履歴</h3>
-          <div id="home-recommendation-history" class="metric-list"></div>
-        </article>
-
-        <article class="card">
-          <h3>提案に使っている運動データ</h3>
-          <dl class="metrics-grid">
-            <div><dt>歩数</dt><dd id="home-steps">0 歩</dd></div>
-            <div><dt>消費カロリー</dt><dd id="home-calories">0 kcal</dd></div>
-            <div><dt>早歩き時間</dt><dd id="home-brisk">00:00</dd></div>
-          </dl>
-          <p class="muted" style="margin-top:8px">運動の詳細計測は「運動」タブで調整できます。</p>
+          <div class="card-header">
+            <div class="card-header__icon card-header__icon--history" aria-hidden="true">📋</div>
+            <h2 class="card-header__title">最近のおすすめ</h2>
+          </div>
+          <div id="home-recommendation-history"></div>
         </article>
       </section>
 
       <!-- 注文 -->
       <section id="tab-order" class="tab-panel is-hidden" data-tab-panel="order">
         <article class="card">
-          <h3>現在の注文</h3>
-          <div id="current-order" class="metric-list"></div>
-          <div class="metric-row total-row">
-            <span>合計</span><span id="order-total">¥600</span>
+          <div class="card-header">
+            <div class="card-header__icon card-header__icon--order" aria-hidden="true">🍜</div>
+            <h2 class="card-header__title">現在の注文</h2>
+          </div>
+          <div id="current-order" class="order-list"></div>
+          <div class="order-total">
+            <span>合計</span>
+            <span id="order-total">¥600</span>
           </div>
         </article>
 
-        <article id="order-diff-card" class="card">
+        <article id="order-diff-card" class="card is-hidden" hidden aria-hidden="true">
           <h3>おすすめとの差分</h3>
           <div class="field-grid">
             <div>
@@ -120,71 +109,94 @@
         </article>
 
         <article class="card">
-          <h2>トッピングを選ぶ</h2>
-          <p class="muted">ラーメンは必須で選択済み。好みでトッピング・ご飯・ドリンクを追加できます。</p>
-          <div class="button-row">
-            <button id="apply-rec-set" class="btn primary" type="button">今日のおすすめセットを適用</button>
-            <button id="reset-order" class="btn" type="button">選択をリセット</button>
+          <div class="card-header">
+            <div class="card-header__icon card-header__icon--add" aria-hidden="true">+</div>
+            <h2 class="card-header__title">トッピングを選ぶ</h2>
           </div>
+          <div class="order-actions">
+            <button id="apply-rec-set" class="btn btn-outline" type="button">おすすめセットを適用</button>
+            <button id="reset-order" class="btn btn-ghost" type="button">選択をリセット</button>
+          </div>
+          <div id="menu-catalog"></div>
         </article>
-
-        <div id="menu-catalog"></div>
       </section>
 
       <!-- 運動 -->
       <section id="tab-activity" class="tab-panel is-hidden" data-tab-panel="activity">
-        <!-- Dashboard view -->
         <div id="activity-dashboard">
+          <div class="activity-toolbar">
+            <button id="show-history" class="btn btn-outline btn--compact" type="button">運動履歴</button>
+            <button id="go-to-settings" class="btn btn-ghost btn--compact" type="button">設定へ</button>
+          </div>
+
+          <div id="activity-tracking-bar" class="tracking-status tracking-status--stopped">
+            <div class="tracking-status__left">
+              <span id="tracking-pulse" class="tracking-dot" aria-hidden="true"></span>
+              <span id="tracking-status" class="tracking-status__label">停止中</span>
+            </div>
+            <div class="tracking-status__actions">
+              <button id="stop-tracking" class="tracking-btn" type="button">停止</button>
+              <button id="start-tracking" class="btn btn-primary tracking-start" type="button">計測開始</button>
+            </div>
+          </div>
+          <p id="sensor-status" class="muted tracking-meta"></p>
+          <p id="today-message" class="message" aria-live="polite"></p>
+
+          <div class="stat-grid">
+            <div class="stat-box stat-box--primary stat-box--wide">
+              <div class="stat-label">歩数</div>
+              <div id="metric-steps" class="stat-value">0</div>
+              <div class="stat-unit">歩</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">消費カロリー</div>
+              <div id="metric-calories" class="stat-value">0</div>
+              <div class="stat-unit">kcal</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">総距離</div>
+              <div id="metric-distance" class="stat-value">0.0</div>
+              <div class="stat-unit">km</div>
+            </div>
+          </div>
+
           <article class="card">
-            <h2>運動データ（サブ機能）</h2>
-            <p class="muted">このデータはおすすめ精度を上げるために使います。ラーメン選びは「ホーム」「注文」がメインです。</p>
-            <div class="button-row">
-              <button id="show-history" class="btn primary" type="button">運動履歴を開く</button>
-              <button id="go-to-settings" class="btn" type="button">天気・体重設定を開く</button>
+            <div class="card-header">
+              <div class="card-header__icon card-header__icon--chart" aria-hidden="true">📊</div>
+              <h2 class="card-header__title">詳細データ</h2>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">平均速度</span>
+              <span id="metric-speed" class="setting-value">0.00 km/h</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">早歩き時間</span>
+              <span id="metric-brisk-duration" class="setting-value">00:00</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">早歩き距離</span>
+              <span id="metric-brisk-distance" class="setting-value">0.00 km</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">走行時間</span>
+              <span id="metric-running-duration" class="setting-value">00:00</span>
             </div>
           </article>
 
-          <article class="card">
-            <div>
-              <p class="label">Tracking Status</p>
-              <p id="tracking-status" class="status-chip stopped">停止中</p>
-            </div>
-            <p id="sensor-status" class="muted"></p>
-            <p id="today-message" class="message" aria-live="polite"></p>
-            <div class="button-row">
-              <button id="start-tracking" class="btn primary" type="button">計測開始</button>
-              <button id="stop-tracking" class="btn" type="button">計測停止</button>
-            </div>
-            <div class="button-row">
-              <button id="manual-step" class="btn" type="button">+1 歩（手動）</button>
-              <button id="reset-today" class="btn danger" type="button">今日の計測をリセット</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <dl class="metrics-grid">
-              <div><dt>歩数</dt><dd id="metric-steps">0 歩</dd></div>
-              <div><dt>総距離</dt><dd id="metric-distance">0.00 km</dd></div>
-              <div><dt>平均速度</dt><dd id="metric-speed">0.00 km/h</dd></div>
-              <div><dt>消費カロリー</dt><dd id="metric-calories">0 kcal</dd></div>
-              <div><dt>早歩き時間</dt><dd id="metric-brisk-duration">00:00</dd></div>
-              <div><dt>早歩き距離</dt><dd id="metric-brisk-distance">0.00 km</dd></div>
-              <div><dt>走行時間</dt><dd id="metric-running-duration">00:00</dd></div>
-              <div><dt>走行距離</dt><dd id="metric-running-distance">0.00 km</dd></div>
-            </dl>
-            <p id="last-updated" class="muted"></p>
-          </article>
+          <div class="button-row">
+            <button id="reset-today" class="btn btn-danger-outline" type="button">今日の計測をリセット</button>
+          </div>
+          <p id="last-updated" class="muted" style="margin-top:8px"></p>
         </div>
 
-        <!-- History sub-view -->
         <div id="activity-history" class="is-hidden">
-          <div class="button-row" style="margin-bottom:4px">
-            <button id="back-to-dashboard" class="btn primary" type="button">運動ダッシュボードに戻る</button>
+          <div class="activity-toolbar">
+            <button id="back-to-dashboard" class="btn btn-primary btn--compact" type="button">ダッシュボードに戻る</button>
           </div>
 
           <article class="card">
             <h2>履歴</h2>
-            <div class="filter-row" role="group" aria-label="History range filter">
+            <div class="filter-row" role="group" aria-label="履歴の期間">
               <button class="filter-button is-active" data-history-days="all" type="button">全期間</button>
               <button class="filter-button" data-history-days="7" type="button">7日</button>
               <button class="filter-button" data-history-days="30" type="button">30日</button>
@@ -204,8 +216,8 @@
             <div id="history-chart" class="history-chart" aria-label="歩数バーグラフ"></div>
 
             <div class="button-row">
-              <button id="download-csv" class="btn primary" type="button">CSVエクスポート</button>
-              <button id="share-csv" class="btn" type="button">CSV共有</button>
+              <button id="download-csv" class="btn btn-primary" type="button">CSVエクスポート</button>
+              <button id="share-csv" class="btn btn-outline" type="button">CSV共有</button>
             </div>
             <p id="history-message" class="message" aria-live="polite"></p>
           </article>
@@ -228,7 +240,7 @@
 
           <article class="card">
             <h3>おすすめ履歴</h3>
-            <div id="recommendation-history-list" class="metric-list"></div>
+            <div id="recommendation-history-list" class="recommendation-history-list"></div>
           </article>
         </div>
       </section>
@@ -236,7 +248,49 @@
       <!-- 設定 -->
       <section id="tab-settings" class="tab-panel is-hidden" data-tab-panel="settings">
         <article class="card">
-          <h2>歩幅推定の設定</h2>
+          <div class="card-header">
+            <div class="card-header__icon card-header__icon--weather" aria-hidden="true">🌤</div>
+            <h2 class="card-header__title">天候設定</h2>
+          </div>
+          <p class="muted shop-address">店舗: 大阪市東淀川区瑞光4-7-6ビスタ瑞光101</p>
+          <div class="chip-row" id="weather-chips-wrap">
+            <button class="chip" data-weather="SUNNY" type="button">晴れ</button>
+            <button class="chip" data-weather="CLOUDY" type="button">くもり</button>
+            <button class="chip" data-weather="RAINY" type="button">雨</button>
+            <button class="chip" data-weather="SNOWY" type="button">雪</button>
+          </div>
+          <div class="temp-field">
+            <span class="temp-field__label">気温</span>
+            <input id="input-temperature" class="temp-field__input" type="number" min="-20" max="45" step="1" inputmode="numeric" aria-label="気温（摂氏）">
+            <span class="temp-field__unit">°C</span>
+          </div>
+          <button id="fetch-weather" class="btn btn-primary" type="button">天気を自動更新</button>
+          <button id="save-weather" class="btn btn-outline" type="button">手動の天候を保存</button>
+          <p id="weather-updated" class="muted weather-updated-meta"></p>
+          <p id="weather-message" class="message" aria-live="polite"></p>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <div class="card-header__icon card-header__icon--memo" aria-hidden="true">📝</div>
+            <h2 class="card-header__title">混雑メモ</h2>
+          </div>
+          <label class="field">
+            メモ
+            <textarea id="crowd-note-input" rows="3"></textarea>
+          </label>
+          <div class="button-row">
+            <button id="save-crowd-note" class="btn btn-primary" type="button">混雑メモを保存</button>
+          </div>
+          <p class="muted" style="margin-top:8px;font-size:12px">Google Maps の公式 API では Popular Times を直接取得できないため、手動メモで管理します。</p>
+          <p id="crowd-note-message" class="message" aria-live="polite"></p>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <div class="card-header__icon card-header__icon--stride" aria-hidden="true">📏</div>
+            <h2 class="card-header__title">歩幅推定</h2>
+          </div>
           <div class="field-grid">
             <label class="field">
               身長 (cm)
@@ -248,7 +302,7 @@
             </label>
           </div>
 
-          <div class="chip-group" id="sex-chips" style="margin-top:10px">
+          <div class="chip-row" id="sex-chips" style="margin-top:10px">
             <button class="chip" data-sex="MALE" type="button">男性</button>
             <button class="chip" data-sex="FEMALE" type="button">女性</button>
             <button class="chip" data-sex="OTHER" type="button">その他</button>
@@ -259,14 +313,26 @@
             <input id="input-stride-scale" type="range" min="0.7" max="1.3" step="0.05" value="1.0">
           </label>
 
-          <dl class="summary-grid" style="margin-top:12px">
-            <div><dt>推定歩幅 (歩行)</dt><dd id="preview-walk">0.00 m</dd></div>
-            <div><dt>推定歩幅 (早歩き)</dt><dd id="preview-brisk">0.00 m</dd></div>
-            <div><dt>推定歩幅 (走行)</dt><dd id="preview-running">0.00 m</dd></div>
-            <div><dt>カロリー計算体重</dt><dd id="preview-weight">0.0 kg</dd></div>
-          </dl>
+          <div class="setting-block">
+            <div class="setting-row">
+              <span class="setting-label">推定歩幅（歩行）</span>
+              <span id="preview-walk" class="setting-value">0.00 m</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">推定歩幅（早歩き）</span>
+              <span id="preview-brisk" class="setting-value">0.00 m</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">推定歩幅（走行）</span>
+              <span id="preview-running" class="setting-value">0.00 m</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">カロリー計算体重</span>
+              <span id="preview-weight" class="setting-value">0.0 kg</span>
+            </div>
+          </div>
 
-          <h3 style="margin-top:16px">実測で補正を計算</h3>
+          <h3 style="margin-top:16px;font-size:15px">実測で補正を計算</h3>
           <div class="field-grid">
             <label class="field">
               実測時の歩数
@@ -278,76 +344,51 @@
             </label>
           </div>
           <div class="button-row">
-            <button id="recalc-scale" class="btn" type="button">実測から補正算出</button>
-            <button id="save-settings" class="btn primary" type="button">設定を保存</button>
+            <button id="recalc-scale" class="btn btn-outline" type="button">実測から補正算出</button>
+            <button id="save-settings" class="btn btn-primary" type="button">設定を保存</button>
           </div>
           <p id="settings-message" class="message" aria-live="polite"></p>
         </article>
 
         <article class="card">
-          <h2>混雑メモ</h2>
-          <label class="field">
-            混雑メモ
-            <textarea id="crowd-note-input" rows="2"></textarea>
-          </label>
-          <div class="button-row" style="margin-top:10px">
-            <button id="save-crowd-note" class="btn primary" type="button">混雑メモを保存</button>
+          <div class="card-header">
+            <div class="card-header__icon card-header__icon--data" aria-hidden="true">💾</div>
+            <h2 class="card-header__title">データ管理</h2>
           </div>
-          <p class="muted" style="margin-top:8px">Google Maps の公式 API では Popular Times を直接取得できないため、ここでは手動メモで管理します。</p>
-          <p id="crowd-note-message" class="message" aria-live="polite"></p>
-        </article>
-
-        <article class="card">
-          <h2>ラーメン提案の天候設定</h2>
-          <p class="muted">店舗住所の天気をリアルタイム更新して、おすすめ提案に反映します。</p>
-          <p class="muted">観測地点: 〒533-0005 大阪府大阪市東淀川区瑞光4-7-6ビスタ瑞光101</p>
-          <div class="button-row" style="margin-top:10px">
-            <button id="fetch-weather" class="btn primary" type="button">店舗天気を今すぐ更新</button>
+          <div class="setting-row setting-row--toggle">
+            <span class="setting-label">端末にデータを保存</span>
+            <label class="toggle-switch">
+              <input id="persist-opt-in" type="checkbox">
+              <span class="toggle-switch__ui" aria-hidden="true"></span>
+            </label>
           </div>
-
-          <div class="chip-group" id="weather-chips" style="margin-top:12px">
-            <button class="chip" data-weather="SUNNY" type="button">晴れ</button>
-            <button class="chip" data-weather="CLOUDY" type="button">くもり</button>
-            <button class="chip" data-weather="RAINY" type="button">雨</button>
-            <button class="chip" data-weather="SNOWY" type="button">雪</button>
-          </div>
-
-          <label class="field" style="margin-top:10px">
-            気温 (°C)
-            <input id="input-temperature" type="number" min="-20" max="45" step="1" inputmode="numeric">
-          </label>
-
-          <div class="button-row" style="margin-top:10px">
-            <button id="save-weather" class="btn primary" type="button">天候設定を保存</button>
-          </div>
-          <p id="weather-updated" class="muted" style="margin-top:6px"></p>
-          <p id="weather-message" class="message" aria-live="polite"></p>
-        </article>
-
-        <article class="card">
-          <h2>保存設定</h2>
-          <label class="field">
-            <span>この端末にデータを保存する</span>
-            <input id="persist-opt-in" type="checkbox">
-          </label>
-          <p id="persist-mode-note" class="muted" style="margin-top:8px"></p>
-          <p class="muted" style="margin-top:8px">
-            既定で端末にデータを保存します。共有端末ではオフにすることを推奨します。
-          </p>
-        </article>
-
-        <article class="card">
-          <div class="button-row">
-            <button id="clear-local-data" class="btn danger" type="button">保存データを削除</button>
-          </div>
-          <p class="muted" style="margin-top:8px">共有端末では使用後に保存データの削除を推奨します。</p>
+          <p id="persist-mode-note" class="muted" style="margin-top:8px;font-size:12px"></p>
+          <p class="muted" style="margin-top:8px;font-size:12px">共有端末ではオフにすることを推奨します。</p>
+          <button id="clear-local-data" class="btn btn-danger-outline" type="button">保存データを削除</button>
         </article>
       </section>
     </main>
 
-    <footer class="footer-note">
-      iOSでは「計測開始」時にモーション許可が必要です。HTTPS か localhost で開いてください。
-    </footer>
+    <p class="footer-note">iOSでは「計測開始」時にモーション許可が必要です。HTTPS か localhost で開いてください。</p>
+
+    <nav class="bottom-nav" aria-label="メインタブ">
+      <button class="tab-button is-active" data-tab="home" type="button" aria-selected="true">
+        <span class="tab-button__icon" aria-hidden="true">🏠</span>
+        <span class="tab-button__label">ホーム</span>
+      </button>
+      <button class="tab-button" data-tab="order" type="button" aria-selected="false">
+        <span class="tab-button__icon" aria-hidden="true">🍜</span>
+        <span class="tab-button__label">注文</span>
+      </button>
+      <button class="tab-button" data-tab="activity" type="button" aria-selected="false">
+        <span class="tab-button__icon" aria-hidden="true">🏃</span>
+        <span class="tab-button__label">運動</span>
+      </button>
+      <button class="tab-button" data-tab="settings" type="button" aria-selected="false">
+        <span class="tab-button__icon" aria-hidden="true">⚙️</span>
+        <span class="tab-button__label">設定</span>
+      </button>
+    </nav>
   </div>
 
   <script type="module" src="./app.js"></script>
