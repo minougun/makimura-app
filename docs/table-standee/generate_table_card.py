@@ -118,8 +118,8 @@ def render_table_guide_png(qr_img: Image.Image) -> None:
     )
 
     y = 460
-    draw.text((W // 2, y), "スマホで「今日のおすすめ」を試してみよう", font=f_lead, fill="#3d2b1f", anchor="mt")
-    _bb = draw.textbbox((W // 2, y), "スマホで「今日のおすすめ」を試してみよう", font=f_lead, anchor="mt")
+    draw.text((W // 2, y), "スマホで「今日のおすすめ」を試してみよう！", font=f_lead, fill="#3d2b1f", anchor="mt")
+    _bb = draw.textbbox((W // 2, y), "スマホで「今日のおすすめ」を試してみよう！", font=f_lead, anchor="mt")
     y = _bb[3] + 48
 
     steps: list[tuple[str, list[str]]] = [
@@ -294,7 +294,7 @@ def _svg_template(qr_base64: str) -> str:
   <text x="600" y="155" text-anchor="middle" fill="#f5e6dc" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif"
         font-size="22" font-weight="500">気分 × 運動量 × 天気で、今日の一杯をご提案</text>
   <text x="600" y="270" text-anchor="middle" fill="#3d2b1f" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif"
-        font-size="34" font-weight="700">スマホで「今日のおすすめ」を試してみよう</text>
+        font-size="34" font-weight="700">スマホで「今日のおすすめ」を試してみよう！</text>
   <text x="600" y="1600" text-anchor="middle" fill="#999" font-family="Noto Sans JP, Hiragino Sans, Yu Gothic, Meiryo, sans-serif" font-size="18">
     共有の端末・お子さまの利用の際は、個人情報の取り扱いにご注意ください。
   </text>
