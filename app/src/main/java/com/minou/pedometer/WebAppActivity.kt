@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.os.Bundle
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -11,14 +13,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
+import androidx.webkit.WebViewAssetLoader
 
 class WebAppActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var assetLoader: WebViewAssetLoader
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
 
         enableEdgeToEdge()
         // Match gradient top colour so status bar blends in.
@@ -29,6 +37,7 @@ class WebAppActivity : ComponentActivity() {
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            @Suppress("DEPRECATION")
             settings.databaseEnabled = true
             settings.cacheMode = WebSettings.LOAD_DEFAULT
             settings.loadsImagesAutomatically = true
@@ -36,7 +45,14 @@ class WebAppActivity : ComponentActivity() {
             settings.mediaPlaybackRequiresUserGesture = false
 
             webChromeClient = WebChromeClient()
-            webViewClient = object : WebViewClient() {}
+            webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(
+                    view: WebView,
+                    request: WebResourceRequest,
+                ): WebResourceResponse? {
+                    return assetLoader.shouldInterceptRequest(request.url)
+                }
+            }
             setBackgroundColor(Color.parseColor("#F0D4A0"))
         }
 
@@ -53,11 +69,11 @@ class WebAppActivity : ComponentActivity() {
                         onBackPressedDispatcher.onBackPressed()
                     }
                 }
-            }
+            },
         )
 
         if (savedInstanceState == null) {
-            webView.loadUrl(WEB_APP_URL)
+            webView.loadUrl(BUNDLED_WEB_APP_URL)
         } else {
             webView.restoreState(savedInstanceState)
         }
@@ -78,6 +94,10 @@ class WebAppActivity : ComponentActivity() {
     }
 
     private companion object {
-        const val WEB_APP_URL = "https://minougun.github.io/makimura-app/"
+        /**
+         * [WebViewAssetLoader] 経由で APK の assets（= リポジトリの web/）を配信。
+         * ES modules や相対パスが file:// より安定する。
+         */
+        const val BUNDLED_WEB_APP_URL = "https://appassets.androidplatform.net/assets/index.html"
     }
 }

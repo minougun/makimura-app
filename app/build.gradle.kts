@@ -39,12 +39,19 @@ android {
     namespace = "com.minou.pedometer"
     compileSdk = 34
 
+    sourceSets {
+        getByName("main") {
+            // リポジトリの web/ を APK に同梱（GitHub Pages 非依存）
+            assets.srcDir(rootProject.file("web"))
+        }
+    }
+
     defaultConfig {
         applicationId = "com.minou.pedometer"
         minSdk = 26
         targetSdk = 34
-        versionCode = 20260306
-        versionName = "2026.03.06-web"
+        versionCode = 20260325
+        versionName = "2026.03.25-web-assets"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -104,6 +111,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.webkit:webkit:1.12.1")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.room:room-runtime:$roomVersion")
