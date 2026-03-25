@@ -33,6 +33,7 @@ const DEFAULT_HOURS_NOTE = "営業時間メモ: 11:00-14:00 / 18:00-22:00";
 const DEFAULT_CROWD_NOTE = "混雑メモ: 12時前後と19時前後は混みやすい";
 const APPETITE_LEVELS = ["LIGHT", "NORMAL", "HUNGRY"];
 const MOOD_PREFERENCES = ["ANY", "RICH", "REFRESHING", "WARMING"];
+const WEATHER_CONDITIONS_VALID = ["SUNNY", "CLOUDY", "RAINY", "SNOWY"];
 
 // ===== Menu Catalog =====
 const MENU_CATEGORIES = [
@@ -1311,38 +1312,7 @@ function clearLocalData() {
 
 // ===== Weather fetch =====
 async function fetchWeatherNow() {
-  // #region agent log
-  fetch("http://127.0.0.1:7845/ingest/efa19363-30c8-4d2d-91d4-8d2de3ed28d5", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5774f6" },
-    body: JSON.stringify({
-      sessionId: "5774f6",
-      hypothesisId: "A,E",
-      location: "app.js:fetchWeatherNow:entry",
-      message: "fetchWeatherNow entry",
-      data: {
-        weatherLoading: state.weatherLoading,
-        hasFetchBtn: Boolean(els.fetchWeatherButton),
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
   if (state.weatherLoading) {
-    // #region agent log
-    fetch("http://127.0.0.1:7845/ingest/efa19363-30c8-4d2d-91d4-8d2de3ed28d5", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5774f6" },
-      body: JSON.stringify({
-        sessionId: "5774f6",
-        hypothesisId: "E",
-        location: "app.js:fetchWeatherNow:skip-loading",
-        message: "skipped because weatherLoading true",
-        data: {},
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     return;
   }
 
@@ -1370,36 +1340,8 @@ async function fetchWeatherNow() {
     setWeatherMessage("店舗天気を更新しました。", false);
 
     renderHome();
-    // #region agent log
-    fetch("http://127.0.0.1:7845/ingest/efa19363-30c8-4d2d-91d4-8d2de3ed28d5", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5774f6" },
-      body: JSON.stringify({
-        sessionId: "5774f6",
-        hypothesisId: "B,C",
-        location: "app.js:fetchWeatherNow:success",
-        message: "weather applied to state",
-        data: { condition: wc.condition, temperatureC: wc.temperatureC },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
   } catch (error) {
     console.warn("weather fetch failed", error);
-    // #region agent log
-    fetch("http://127.0.0.1:7845/ingest/efa19363-30c8-4d2d-91d4-8d2de3ed28d5", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5774f6" },
-      body: JSON.stringify({
-        sessionId: "5774f6",
-        hypothesisId: "B,C",
-        location: "app.js:fetchWeatherNow:catch",
-        message: String(error && error.message ? error.message : error),
-        data: { name: error && error.name },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     setWeatherMessage("自動取得に失敗しました。時間をおいて再試行してください。", true);
   } finally {
     state.weatherLoading = false;
@@ -1408,20 +1350,6 @@ async function fetchWeatherNow() {
       fetchBtn.disabled = false;
       fetchBtn.textContent = "天気を自動更新";
     }
-    // #region agent log
-    fetch("http://127.0.0.1:7845/ingest/efa19363-30c8-4d2d-91d4-8d2de3ed28d5", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5774f6" },
-      body: JSON.stringify({
-        sessionId: "5774f6",
-        hypothesisId: "A,E",
-        location: "app.js:fetchWeatherNow:finally",
-        message: "fetchWeatherNow finally",
-        data: { weatherLoadingCleared: true },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
   }
 }
 
@@ -1443,24 +1371,6 @@ async function fetchWeatherForShop() {
 
       const data = await response.json();
       const current = data.current;
-      // #region agent log
-      fetch("http://127.0.0.1:7845/ingest/efa19363-30c8-4d2d-91d4-8d2de3ed28d5", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5774f6" },
-        body: JSON.stringify({
-          sessionId: "5774f6",
-          hypothesisId: "C",
-          location: "app.js:fetchWeatherForShop:parsed",
-          message: "open-meteo json shape",
-          data: {
-            ok: response.ok,
-            hasCurrent: Boolean(current),
-            keys: current ? Object.keys(current) : [],
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       if (!current) throw new Error("天気データを取得できませんでした。");
 
       return {
@@ -1468,20 +1378,6 @@ async function fetchWeatherForShop() {
         temperatureC: Math.round(current.temperature_2m),
       };
     } catch (error) {
-      // #region agent log
-      fetch("http://127.0.0.1:7845/ingest/efa19363-30c8-4d2d-91d4-8d2de3ed28d5", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5774f6" },
-        body: JSON.stringify({
-          sessionId: "5774f6",
-          hypothesisId: "B",
-          location: "app.js:fetchWeatherForShop:attempt-catch",
-          message: String(error && error.message ? error.message : error),
-          data: { name: error && error.name, attempt },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       if (error && error.name === "AbortError") {
         lastError = new Error("天気APIがタイムアウトしました。");
       } else {
@@ -1506,8 +1402,6 @@ function weatherConditionFromCode(code) {
   if ([71, 73, 75, 77, 85, 86].includes(code)) return "SNOWY";
   return "CLOUDY";
 }
-
-const WEATHER_CONDITIONS_VALID = ["SUNNY", "CLOUDY", "RAINY", "SNOWY"];
 
 function normalizeWeatherContext(wc) {
   const fallback = { condition: "CLOUDY", temperatureC: 20 };
@@ -1535,23 +1429,6 @@ function scheduleWeatherAutoRefresh() {
     clearTimeout(weatherInitialFetchTimer);
     weatherInitialFetchTimer = 0;
   }
-  // #region agent log
-  fetch("http://127.0.0.1:7845/ingest/efa19363-30c8-4d2d-91d4-8d2de3ed28d5", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5774f6" },
-    body: JSON.stringify({
-      sessionId: "5774f6",
-      hypothesisId: "D",
-      location: "app.js:scheduleWeatherAutoRefresh",
-      message: "schedule entry",
-      data: {
-        visibility: document.visibilityState,
-        weatherUpdatedAtEpochMs: state.weatherUpdatedAtEpochMs,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
   if (document.visibilityState === "hidden") return;
 
   // Initial fetch after short delay (non-blocking)
@@ -1559,20 +1436,6 @@ function scheduleWeatherAutoRefresh() {
     state.weatherUpdatedAtEpochMs === 0 ||
     Date.now() - state.weatherUpdatedAtEpochMs >= WEATHER_REFRESH_MS;
 
-  // #region agent log
-  fetch("http://127.0.0.1:7845/ingest/efa19363-30c8-4d2d-91d4-8d2de3ed28d5", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "5774f6" },
-    body: JSON.stringify({
-      sessionId: "5774f6",
-      hypothesisId: "D",
-      location: "app.js:scheduleWeatherAutoRefresh:shouldFetch",
-      message: "initial fetch decision",
-      data: { shouldFetchNow },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
   if (shouldFetchNow) {
     weatherInitialFetchTimer = window.setTimeout(() => {
       weatherInitialFetchTimer = 0;
